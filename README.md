@@ -62,7 +62,9 @@ The design trio (`frontend-design`, `silk-design`, `scoville-ui-anti-ai-slop`) a
 fire on "build/fix UI" but aren't redundant — they sit at different altitudes and
 compose in order:
 
-1. `frontend-design` decides the aesthetic direction (palette, type, layout, copy)
+1. `frontend-design` decides the aesthetic direction (palette, type, layout, copy) —
+   after drafting the token system it checkpoints with the user against
+   [skillsui.app/skills](https://www.skillsui.app/skills) as a second opinion
 2. `silk-design` executes it with concrete motion/craft recipes
 3. `scoville-ui-anti-ai-slop` audits the result (hierarchy, accessibility,
    responsiveness, usability)
