@@ -30,7 +30,9 @@ Vendored from [anthropics/claude-code](https://github.com/anthropics/claude-code
 Vendored from Matt Pocock's skills plugin:
 - `grilling`, `tdd`, `codebase-design`, `domain-modeling`, `code-review`,
   `diagnosing-bugs`, `prototype`, `resolving-merge-conflicts`, `wizard`,
-  `writing-for-agents`
+  `writing-for-agents`, `wayfinder` — plans an effort too big for one session as a
+  map of decision tickets on the issue tracker; bridges discovery-ideation and
+  code architecture. User-invoked only (no auto-trigger).
 
 Renaming/redefining any of the above to fit personal workflow is expected and fine —
 this repo is meant to be edited, not just mirrored from upstream.
@@ -39,10 +41,10 @@ this repo is meant to be edited, not just mirrored from upstream.
 
 | Phase | Skills |
 | --- | --- |
-| Discovery & Ideation | `discovery-ideation`, `grilling` |
+| Discovery & Ideation | `discovery-ideation`, `grilling`, `wayfinder` (for oversized efforts) |
 | Research | `scoville-research` |
 | Design | `silk-design`, `frontend-design` |
-| Code architecture | `codebase-design`, `domain-modeling`, ... |
+| Code architecture | `codebase-design`, `domain-modeling`, `wayfinder`, ... |
 | Implementation | `tdd`, `prototype`, `scoville-code-anti-ai-slop` |
 | QA | `code-review`, `diagnosing-bugs`, `scoville-ui-anti-ai-slop` |
 | Deployment / shipping | `resolving-merge-conflicts`, `wizard` |
