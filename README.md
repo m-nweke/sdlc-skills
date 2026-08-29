@@ -38,6 +38,20 @@ Vendored from Matt Pocock's skills plugin:
   than kept standalone — both fired on "review" requests at different altitudes
   (mechanism vs. discipline), so the mechanism now lives as a reference the
   guardrail skill loads for that outcome.
+- `improve-codebase-architecture` — scans a codebase for deepening opportunities,
+  presents an HTML report, grills through whichever one you pick. Fills the
+  code-architecture gap `codebase-design`/`domain-modeling` only gave vocabulary
+  for.
+- `to-spec` — synthesizes the current conversation into a spec, publishes to the
+  issue tracker. No interview; pure synthesis of what's already been discussed.
+- `to-tickets` — breaks a plan/spec/conversation into tracer-bullet tickets with
+  blocking edges, published to the tracker.
+- `implement` — implements a piece of work from a spec or ticket set. Consumes
+  `to-spec`/`to-tickets` output directly.
+- `handoff` — compacts the current conversation into a handoff document for
+  another agent to pick up. Connective tissue between phase-agents.
+
+All five above are user-invoked only (`disable-model-invocation: true`).
 
 Renaming/redefining any of the above to fit personal workflow is expected and fine —
 this repo is meant to be edited, not just mirrored from upstream.
@@ -49,10 +63,11 @@ this repo is meant to be edited, not just mirrored from upstream.
 | Discovery & Ideation | `discovery-ideation`, `grilling`, `wayfinder` (for oversized efforts) |
 | Research | `scoville-research` |
 | Design | `silk-design`, `frontend-design` |
-| Code architecture | `codebase-design`, `domain-modeling`, `wayfinder`, ... |
-| Implementation | `tdd`, `prototype`, `scoville-code-anti-ai-slop` |
+| Code architecture | `codebase-design`, `domain-modeling`, `improve-codebase-architecture`, `wayfinder`, `to-spec`, `to-tickets` |
+| Implementation | `tdd`, `prototype`, `implement`, `scoville-code-anti-ai-slop` |
 | QA | `scoville-code-anti-ai-slop` (review outcome), `diagnosing-bugs`, `scoville-ui-anti-ai-slop` |
 | Deployment / shipping | `resolving-merge-conflicts`, `wizard` |
+| Cross-cutting | `handoff` — hands a phase's context to the next agent |
 
 Agents (one per phase) still to be defined in `agents/`.
 
