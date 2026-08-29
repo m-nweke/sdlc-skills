@@ -1,6 +1,6 @@
 ---
 name: scoville-code-anti-ai-slop
-description: Goal-first guardrail for planning, changing, testing, reviewing, or removing code and engineering artifacts. Preserve observable outcome, canonical ownership, risk, validation, and honest evidence without scope drift. Not for conceptual questions unrelated to a codebase.
+description: Goal-first guardrail for planning, changing, testing, reviewing, or removing code and engineering artifacts. Preserve observable outcome, canonical ownership, risk, validation, and honest evidence without scope drift. Covers two-axis (Standards + Spec) review of a branch, PR, or diff since a fixed point. Not for conceptual questions unrelated to a codebase.
 ---
 
 # Scoville Code Anti-AI-Slop
@@ -120,7 +120,9 @@ or concluding implementation/patch review read
 [change-workflow.md](references/change-workflow.md). Before choosing, running,
 or interpreting checks; reviewing evidence; handling repeated failure; or
 claiming implementation completeness read
-[validation.md](references/validation.md). Load before constrained action/claim,
+[validation.md](references/validation.md). Before a requested branch, PR, or
+diff-since-a-fixed-point review — the two-axis Standards+Spec mechanism — read
+[review.md](references/review.md). Load before constrained action/claim,
 never afterward as justification.
 
 ## Risk state
