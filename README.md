@@ -23,6 +23,10 @@ Vendored from [benjaminstelzer/scoville-*](https://github.com/benjaminstelzer):
 Vendored from [bendrape1-byte/silk-design](https://github.com/bendrape1-byte/silk-design):
 - `silk-design` — motion/polish-by-default web UI building (design branch)
 
+Vendored from [anthropics/claude-code](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md):
+- `frontend-design` — aesthetic direction, typography, and non-templated visual
+  design choices (design branch)
+
 Vendored from Matt Pocock's skills plugin:
 - `grilling`, `tdd`, `codebase-design`, `domain-modeling`, `code-review`,
   `diagnosing-bugs`, `prototype`, `resolving-merge-conflicts`, `wizard`,
@@ -37,7 +41,7 @@ this repo is meant to be edited, not just mirrored from upstream.
 | --- | --- |
 | Discovery & Ideation | `discovery-ideation`, `grilling` |
 | Research | `scoville-research` |
-| Design | `silk-design`, ... |
+| Design | `silk-design`, `frontend-design` |
 | Code architecture | `codebase-design`, `domain-modeling`, ... |
 | Implementation | `tdd`, `prototype`, `scoville-code-anti-ai-slop` |
 | QA | `code-review`, `diagnosing-bugs`, `scoville-ui-anti-ai-slop` |
