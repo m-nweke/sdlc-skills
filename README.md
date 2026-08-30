@@ -69,6 +69,33 @@ out of scope of what's already here):
 
 Also brought over a ready-made agent (see Agents below): `design-review`.
 
+Vendored from [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) (skipped
+`brutalist-skill`/`minimalist-skill`/`soft-skill` as redundant with `ui-ux-pro-max`'s
+style catalog, `brandkit`/`stitch-skill` as out of scope, `image-to-code-skill` as
+Codex-specific, and `output-skill` as redundant with `scoville-code-anti-ai-slop`'s
+completeness rules). Its flagship `taste-skill/SKILL.md` covered nearly the same mission
+as `frontend-design` — anti-slop, read-the-brief, no templated defaults — at the *same*
+altitude, so rather than vendor it as a second skill competing for the same trigger, its
+concrete mechanisms were folded into `frontend-design` as new reference files:
+- `frontend-design/references/ai-tells.md` — forbidden AI-tell patterns (the em-dash ban,
+  "Jane Doe" placeholder content, div-based fake screenshots, eyebrow overuse, and more)
+- `frontend-design/references/dials-and-layout.md` — the three dials
+  (`DESIGN_VARIANCE`/`MOTION_INTENSITY`/`VISUAL_DENSITY`), hard layout rules, content
+  density rules, and the dark-mode protocol
+- `frontend-design/references/design-system-appendix.md` — real install commands and
+  canonical docs for Material/Fluent/Carbon/shadcn/GOV.UK/etc., so a design-system choice
+  is grounded rather than guessed
+
+Two genuinely new skills came over standalone, since they don't overlap anything already
+here:
+- `redesign-skill` — audits an existing site, identifies generic AI patterns, upgrades to
+  premium quality without breaking functionality. Nothing else covers the
+  audit-existing-site workflow.
+- `imagegen-frontend-web` / `imagegen-frontend-mobile` — generate per-section/per-screen
+  concept images *before* code is written, for the user to react to. Fills the "prototype
+  before the design is agreed" need with visual concepts, complementing `prototype`
+  (Matt Pocock, code-based prototyping).
+
 Renaming/redefining any of the above to fit personal workflow is expected and fine —
 this repo is meant to be edited, not just mirrored from upstream.
 
@@ -78,7 +105,7 @@ this repo is meant to be edited, not just mirrored from upstream.
 | --- | --- |
 | Discovery & Ideation | `discovery-ideation`, `grilling`, `wayfinder` (for oversized efforts) |
 | Research | `scoville-research`, `ui-ux-pro-max` (design-data lookups) |
-| Design | `ui-ux-pro-max` (data) → `frontend-design` (direction) → `silk-design` (craft) → `design-system` (tokens/component specs) |
+| Design | `ui-ux-pro-max` (data) → `frontend-design` (direction) → `imagegen-frontend-web`/`imagegen-frontend-mobile` (pre-code visual prototypes) → `silk-design` (craft) → `design-system` (tokens/component specs); `redesign-skill` for existing sites |
 | Code architecture | `codebase-design`, `domain-modeling`, `improve-codebase-architecture`, `wayfinder`, `to-spec`, `to-tickets` |
 | Implementation | `tdd`, `prototype`, `implement`, `ui-styling`, `scoville-code-anti-ai-slop` |
 | QA | `scoville-code-anti-ai-slop` (review outcome), `diagnosing-bugs`, `scoville-ui-anti-ai-slop` (discipline) + `design-review` agent (live-browser mechanism) |
@@ -118,12 +145,18 @@ UI" but aren't redundant — they compose in order:
    pairings, UX guidelines, relevant stack conventions
 2. `frontend-design` decides the aesthetic direction on top of that data (palette,
    type, layout, copy) — after drafting the token system it checkpoints with the user
-   against [skillsui.app/skills](https://www.skillsui.app/skills) as a second opinion
-3. `silk-design` executes it with concrete motion/craft recipes; `design-system`
-   formalizes the result into three-layer tokens and component specs
-4. `scoville-ui-anti-ai-slop` is the standing audit discipline (hierarchy,
+   against [skillsui.app/skills](https://www.skillsui.app/skills) as a second opinion,
+   sets the three dials, and self-critiques against the AI-tells list before shipping
+3. `imagegen-frontend-web`/`imagegen-frontend-mobile` turn that direction into
+   pre-code concept images the user can react to before anything is built
+4. `silk-design` executes the agreed direction with concrete motion/craft recipes;
+   `design-system` formalizes the result into three-layer tokens and component specs
+5. `scoville-ui-anti-ai-slop` is the standing audit discipline (hierarchy,
    accessibility, responsiveness, usability); `design-review` is the live-browser
    mechanism it dispatches for a full multi-viewport WCAG pass
+
+`redesign-skill` runs this same pipeline in reverse-gear for an existing site: audit
+first, then apply the same direction/craft/audit steps without breaking functionality.
 
 Kept as separate skills rather than merged — collapsing them would mix data,
 judgment, implementation, and audit into one file, which is exactly what "kept
