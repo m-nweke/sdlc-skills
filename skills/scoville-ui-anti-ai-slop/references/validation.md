@@ -78,6 +78,16 @@ Use screenshots for spatial evidence and interaction tooling or platform
 inspection for behavior. Measure computed values or accessibility properties
 when visual inspection cannot establish the claim.
 
+## Use the design-review agent for full multi-viewport audits
+
+When the claim needs a live-browser pass across viewports with WCAG 2.1 AA checks —
+not a single targeted observation — dispatch the `design-review` agent rather than
+improvising the browser drive here. It screenshots each viewport tier and returns
+ranked, evidence-based findings (Blockers → Nitpicks) through its own 7-phase review.
+Fold its findings into this skill's reporting rules below rather than restating its
+process; this skill still owns what counts as sufficient evidence and how findings are
+prioritized, the agent owns driving the browser.
+
 ## Use automation as supporting evidence
 
 Run focused component, integration, visual-regression, and accessibility checks

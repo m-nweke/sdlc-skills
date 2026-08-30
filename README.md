@@ -53,6 +53,22 @@ Vendored from Matt Pocock's skills plugin:
 
 All five above are user-invoked only (`disable-model-invocation: true`).
 
+Vendored from [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)
+(skipped its `design`/`brand`/`banner-design`/`slides` skills as redundant with or
+out of scope of what's already here):
+- `ui-ux-pro-max` — queryable design-intelligence database (styles, palette/reasoning
+  profiles, font pairings, UX guidelines, GSAP presets, chart types, stacks) via a
+  `scripts/search.py` CLI. Feeds `frontend-design` with data rather than opinion —
+  see the `design-plan` command pattern in `agents/design-review-refs/commands/`.
+- `design-system` — three-layer token architecture (primitive→semantic→component) +
+  component specs; bridges Design → Code architecture more concretely than
+  `codebase-design`/`domain-modeling` alone.
+- `ui-styling` — shadcn/ui + Radix + Tailwind, accessible components, dark mode.
+  Implementation-phase skill; gives accessible defaults up front instead of catching
+  violations later in audit.
+
+Also brought over a ready-made agent (see Agents below): `design-review`.
+
 Renaming/redefining any of the above to fit personal workflow is expected and fine —
 this repo is meant to be edited, not just mirrored from upstream.
 
@@ -61,28 +77,58 @@ this repo is meant to be edited, not just mirrored from upstream.
 | Phase | Skills |
 | --- | --- |
 | Discovery & Ideation | `discovery-ideation`, `grilling`, `wayfinder` (for oversized efforts) |
-| Research | `scoville-research` |
-| Design | `silk-design`, `frontend-design` |
+| Research | `scoville-research`, `ui-ux-pro-max` (design-data lookups) |
+| Design | `ui-ux-pro-max` (data) → `frontend-design` (direction) → `silk-design` (craft) → `design-system` (tokens/component specs) |
 | Code architecture | `codebase-design`, `domain-modeling`, `improve-codebase-architecture`, `wayfinder`, `to-spec`, `to-tickets` |
-| Implementation | `tdd`, `prototype`, `implement`, `scoville-code-anti-ai-slop` |
-| QA | `scoville-code-anti-ai-slop` (review outcome), `diagnosing-bugs`, `scoville-ui-anti-ai-slop` |
+| Implementation | `tdd`, `prototype`, `implement`, `ui-styling`, `scoville-code-anti-ai-slop` |
+| QA | `scoville-code-anti-ai-slop` (review outcome), `diagnosing-bugs`, `scoville-ui-anti-ai-slop` (discipline) + `design-review` agent (live-browser mechanism) |
 | Deployment / shipping | `resolving-merge-conflicts`, `wizard` |
 | Cross-cutting | `handoff` — hands a phase's context to the next agent |
 
-Agents (one per phase) still to be defined in `agents/`.
+## Agents
+
+`agents/` holds full phase agents (still mostly TBD) plus any ready-made agent worth
+keeping as-is:
+
+- `design-review` — live-browser (Playwright MCP) UI reviewer: screenshots each
+  viewport tier, checks WCAG 2.1 AA, runs a 7-phase review, returns ranked findings
+  (Blockers → Nitpicks). `scoville-ui-anti-ai-slop/references/validation.md` now
+  points to it as the mechanism for a full multi-viewport audit, so the two don't
+  compete — the guardrail skill still owns what counts as sufficient evidence, this
+  agent owns driving the browser. Reference commands (`design-plan`, `design-review`)
+  and its heuristic fallback script (`design-audit.mjs`, used when no MCP browser is
+  available) live in `agents/design-review-refs/`.
+  **Caveat:** needs `mcp__playwright` or `mcp__chrome-devtools` installed to drive a
+  real browser — neither is currently configured in this environment (which uses
+  `claude-in-chrome` instead per this machine's CLAUDE.md). Until one of those MCP
+  servers is added, it falls back to the heuristic-only script.
 
 ## Composition notes
 
-The design trio (`frontend-design`, `silk-design`, `scoville-ui-anti-ai-slop`) all
-fire on "build/fix UI" but aren't redundant — they sit at different altitudes and
-compose in order:
+Every skill here is meant to be complementary, not competing — each owns one altitude
+(data, judgment, execution, audit) so two skills never fight over the same trigger.
+Where two are adjacent enough to be confused, the boundary is written down explicitly
+rather than left implicit:
 
-1. `frontend-design` decides the aesthetic direction (palette, type, layout, copy) —
-   after drafting the token system it checkpoints with the user against
-   [skillsui.app/skills](https://www.skillsui.app/skills) as a second opinion
-2. `silk-design` executes it with concrete motion/craft recipes
-3. `scoville-ui-anti-ai-slop` audits the result (hierarchy, accessibility,
-   responsiveness, usability)
+The design pipeline (`ui-ux-pro-max`, `frontend-design`, `silk-design`,
+`design-system`, `scoville-ui-anti-ai-slop`, `design-review`) all fire on "build/fix
+UI" but aren't redundant — they compose in order:
 
-Kept as three skills rather than merged, since collapsing them would mix judgment,
-implementation, and audit into one file.
+1. `ui-ux-pro-max` supplies research data: styles, palette/reasoning profiles, font
+   pairings, UX guidelines, relevant stack conventions
+2. `frontend-design` decides the aesthetic direction on top of that data (palette,
+   type, layout, copy) — after drafting the token system it checkpoints with the user
+   against [skillsui.app/skills](https://www.skillsui.app/skills) as a second opinion
+3. `silk-design` executes it with concrete motion/craft recipes; `design-system`
+   formalizes the result into three-layer tokens and component specs
+4. `scoville-ui-anti-ai-slop` is the standing audit discipline (hierarchy,
+   accessibility, responsiveness, usability); `design-review` is the live-browser
+   mechanism it dispatches for a full multi-viewport WCAG pass
+
+Kept as separate skills rather than merged — collapsing them would mix data,
+judgment, implementation, and audit into one file, which is exactly what "kept
+complementary" is meant to prevent.
+
+The same pattern governs `code-review` (folded as a reference into
+`scoville-code-anti-ai-slop` rather than left to compete on "review") and `handoff`
+(the one skill every phase-agent shares, so none of them reinvent context transfer).
