@@ -56,7 +56,9 @@ End the report with a **Top recommendation** section: which candidate you'd tack
 
 See [HTML-REPORT.md](HTML-REPORT.md) for the full HTML scaffold, diagram patterns, and styling guidance.
 
-Do NOT propose interfaces yet. After the file is written, ask the user: "Which of these would you like to explore?"
+Do NOT propose interfaces yet. After the file is written, ask through the `AskUserQuestion`
+tool which candidate to explore — the report's cards as options (your **Top recommendation**
+first) — rather than a plain-text ask.
 
 ### 3. Grilling loop
 

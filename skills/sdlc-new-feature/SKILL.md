@@ -12,7 +12,8 @@ ask rather than guessing: the pipeline commits to a slug and a run manifest, so 
 the wrong reading is more to unwind than one clarifying question.
 
 1. Capture the raw request in the user's own words — don't paraphrase it away.
-2. Derive a short kebab-case `slug` for it. Ask if nothing obvious presents itself; don't guess
+2. Derive a short kebab-case `slug` for it. If nothing obvious presents itself, offer 2-3
+   candidates through the `AskUserQuestion` tool rather than asking in plain text — don't guess
    on something referenced across every phase artifact.
 3. Invoke the Skill tool with `sdlc-pipeline`, passing `kind: feature`, the `request`, and the
    `slug`.

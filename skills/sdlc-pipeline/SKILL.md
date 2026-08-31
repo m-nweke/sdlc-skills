@@ -23,8 +23,10 @@ The caller (an `sdlc-*` entry-point skill) provides:
 - **request** — the raw ask, in the user's own words
 - **slug** — short kebab-case name for the effort
 
-If invoked directly with any of these missing, ask before doing anything else — don't guess a
-slug for something that will be referenced across several artifacts.
+If invoked directly with any of these missing, use the `AskUserQuestion` tool before doing
+anything else, not a plain-text ask — `kind` has four concrete options to offer outright; for
+`slug`, offer 2-3 candidates derived from `request`. Don't guess a slug for something that will
+be referenced across several artifacts.
 
 ## 1. Classify size
 

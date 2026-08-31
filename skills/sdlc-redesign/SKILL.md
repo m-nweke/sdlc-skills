@@ -12,7 +12,8 @@ than guessing.
 
 1. Capture what's being redesigned (URL, file, or screen) and what's driving it, in the user's
    own words.
-2. Derive a short kebab-case `slug` for it. Ask if nothing obvious presents itself.
+2. Derive a short kebab-case `slug` for it. If nothing obvious presents itself, offer 2-3
+   candidates through the `AskUserQuestion` tool rather than asking in plain text.
 3. Invoke the Skill tool with `sdlc-pipeline`, passing `kind: redesign`, the `request`, and the
    `slug`.
 

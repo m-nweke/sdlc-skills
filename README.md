@@ -234,6 +234,20 @@ Every skill here is meant to be complementary, not competing — each owns one a
 Where two are adjacent enough to be confused, the boundary is written down explicitly
 rather than left implicit.
 
+**Every question a skill here asks the user goes through the `AskUserQuestion` tool, never
+plain narrated text.** That's the built-in question UI — a real picker, with a short chip
+label and 2-4 concrete options (yours recommended, first), rather than a wall of prose the
+user has to answer freehand. It applies even to a question that looks free-text at first
+glance (a slug, a URL, an unclear interface): distill the real candidates you can see into
+options — including "something else," worded as an actual option — and let the tool's
+built-in Other cover the rest, instead of leaving it fully open-ended. `grilling` is the
+shared mechanism most interviewing here runs through (`discovery-ideation`, `wayfinder`,
+`improve-codebase-architecture`'s pick-a-candidate loop all delegate into it), so it only
+needed fixing in one place; a handful of skills with their own standalone question (a seam
+confirmation in `tdd`, a ticket-breakdown gate in `to-tickets`, a stack/URL/slug detection
+fallback in a few others) were updated individually. New skills should default to this from
+the start rather than needing a retrofit.
+
 **The design chain** (`ui-ux-pro-max`, `frontend-design`, `silk-design`,
 `design-system`, `scoville-ui-anti-ai-slop`, `design-review`) all fire on "build/fix UI"
 but aren't redundant — they compose in order:

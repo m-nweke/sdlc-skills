@@ -14,7 +14,8 @@ for a small feature — see `sdlc-pipeline`'s phase table for the detail.
 
 1. Capture what's being hardened (the whole app, one service, one concern like auth or
    dependency hygiene) and what's driving it, in the user's own words.
-2. Derive a short kebab-case `slug` for it. Ask if nothing obvious presents itself.
+2. Derive a short kebab-case `slug` for it. If nothing obvious presents itself, offer 2-3
+   candidates through the `AskUserQuestion` tool rather than asking in plain text.
 3. Invoke the Skill tool with `sdlc-pipeline`, passing `kind: harden`, the `request`, and the
    `slug`.
 

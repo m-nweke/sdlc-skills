@@ -9,7 +9,7 @@ The entry point of the SDLC pipeline. Nothing here gets researched, designed, or
 
 ## 1. Capture the raw input
 
-Get the idea or problem statement in the user's own words. If it's vague ("we should do something with churn"), ask one clarifying question to anchor it — don't start ideating on a guess.
+Get the idea or problem statement in the user's own words. If it's vague ("we should do something with churn"), anchor it before ideating on a guess: use the `AskUserQuestion` tool with the interpretations you can see as options (your best read as the recommended one), rather than a plain-text clarifying question.
 
 ## 2. Grill it
 

@@ -46,13 +46,10 @@ Present the proposed breakdown as a numbered list. For each ticket, show:
 - **Blocked by**: which other tickets (if any) must complete first
 - **What it delivers**: the end-to-end behaviour this ticket makes work
 
-Ask the user:
-
-- Does the granularity feel right? (too coarse / too fine)
-- Are the blocking edges correct: does each ticket only depend on tickets that genuinely gate it?
-- Should any tickets be merged or split further?
-
-Iterate until the user approves the breakdown.
+Gate the breakdown with the `AskUserQuestion` tool rather than a plain-text ask — options like
+**Approve**, **Granularity's off** (too coarse or too fine), **Blocking edges are wrong** (a
+ticket depends on something that doesn't actually gate it), with your own read as the
+recommended option. Iterate until the user approves.
 
 ### 5. Publish the tickets to the configured tracker
 

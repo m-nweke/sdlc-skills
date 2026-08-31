@@ -12,7 +12,8 @@ ask rather than guessing.
 
 1. Capture the bug report or defect in the user's own words: symptom, where it was seen, repro
    if known.
-2. Derive a short kebab-case `slug` for it. Ask if nothing obvious presents itself.
+2. Derive a short kebab-case `slug` for it. If nothing obvious presents itself, offer 2-3
+   candidates through the `AskUserQuestion` tool rather than asking in plain text.
 3. Invoke the Skill tool with `sdlc-pipeline`, passing `kind: fix`, the `request`, and the
    `slug`.
 

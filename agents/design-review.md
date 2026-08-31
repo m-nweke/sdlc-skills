@@ -6,7 +6,7 @@ description: >-
   visual quality, responsiveness, or accessibility. Drives a real browser
   (`mcp__claude-in-chrome__*`) across viewports, checks WCAG 2.1 AA, and returns ranked,
   evidence-based findings.
-tools: mcp__claude-in-chrome__tabs_context_mcp, mcp__claude-in-chrome__navigate, mcp__claude-in-chrome__computer, mcp__claude-in-chrome__read_page, mcp__claude-in-chrome__tabs_create_mcp, mcp__claude-in-chrome__tabs_close_mcp, mcp__claude-in-chrome__read_console_messages, mcp__claude-in-chrome__read_network_requests, mcp__claude-in-chrome__resize_window, Read, Grep, Glob, Bash
+tools: mcp__claude-in-chrome__tabs_context_mcp, mcp__claude-in-chrome__navigate, mcp__claude-in-chrome__computer, mcp__claude-in-chrome__read_page, mcp__claude-in-chrome__tabs_create_mcp, mcp__claude-in-chrome__tabs_close_mcp, mcp__claude-in-chrome__read_console_messages, mcp__claude-in-chrome__read_network_requests, mcp__claude-in-chrome__resize_window, AskUserQuestion, Read, Grep, Glob, Bash
 model: sonnet
 ---
 
@@ -24,8 +24,11 @@ observed behavior are your primary evidence.
 ## Inputs you need
 
 - A **URL** (preferred, e.g. `http://localhost:3000/pricing`) or a **file path** to open.
-- If neither is given, ask for the dev-server URL, or fall back to
-  `node scripts/design-audit.mjs` against the file/URL for a heuristic-only pass.
+- If neither is given, check `package.json` scripts / running processes for a likely dev-server
+  port, then ask through the `AskUserQuestion` tool — the detected URL(s) as options (best guess
+  recommended), the user's own "Other" entry as the escape hatch — rather than a plain-text ask.
+  If nothing can be detected, fall back to `node scripts/design-audit.mjs` against the file/URL
+  for a heuristic-only pass.
 
 Drive the browser with `mcp__claude-in-chrome__*`. Call `tabs_context_mcp` first, then open a
 new tab with `tabs_create_mcp` rather than reusing one of the user's existing tabs unless they

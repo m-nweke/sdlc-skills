@@ -5,21 +5,9 @@ description: Grill the user relentlessly about a plan, decision, or idea. Use wh
 
 Interview the user relentlessly until you reach a shared understanding. Map this as a **design tree**: every decision branches into the decisions that hang off it.
 
-Work the tree in **rounds**. The **frontier** is every decision whose prerequisites are already settled: the questions you can ask _now_ without guessing at answers you haven't heard yet. Ask the whole frontier in one round: number each question and give your recommended answer. Then wait for the user's answers before the next round.
+Work the tree in **rounds**. The **frontier** is every decision whose prerequisites are already settled: the questions you can ask _now_ without guessing at answers you haven't heard yet. Ask the whole frontier through the **`AskUserQuestion` tool** — never as plain narrated text — so the user gets the built-in question UI (a real picker, not a wall of numbered prose to answer freehand) for every question this skill asks. Then wait for the user's answers before the next round.
 
-Format a round like so:
-
-```
-❓ **Q1** - **<question title>**: <question body, might be multiple paragraphs, including multiple choices>
-
-➡️ <your recommended answer>
-
----
-
-❓ **Q2** - **<question title>**: <question body, might be multiple paragraphs, including multiple choices>
-
-➡️ <your recommended answer>
-```
+Each question needs a short `header` (a chip label, ≤12 chars — "Auth," "Scope," "Seams") and 2-4 concrete `options`, your recommended one first with "(Recommended)" in its label. A question that doesn't obviously reduce to a short list of choices still needs one: distill the real candidates you can see (including "something else entirely," worded as an actual option, not just relying on the tool's built-in Other) rather than leaving it open-ended — the distillation is part of grilling, not a shortcut around it. The tool caps a single call at 4 questions; a frontier bigger than that is several `AskUserQuestion` calls back-to-back, still one round — don't shrink the frontier to fit the cap.
 
 Each round the user answers reshapes the tree: settled decisions push the frontier outward and unblock questions that depended on them. Recompute the frontier and ask the next round. A question whose answer depends on another question still open in this round belongs to a _later_ round, not this one.
 
