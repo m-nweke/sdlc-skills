@@ -99,6 +99,32 @@ here:
 Renaming/redefining any of the above to fit personal workflow is expected and fine —
 this repo is meant to be edited, not just mirrored from upstream.
 
+## The pipeline: `sdlc-pipeline` + entry points
+
+`sdlc-pipeline` is the shared orchestration engine, modelled on affaan-m/ECC's
+`orch-pipeline` family but with every phase transition gated on user approval instead
+of ECC's two-gate (after Plan, before Commit) minimalism — reduced supervision is
+earned per phase as it proves reliable, not assumed. It classifies request size
+(trivial/small/standard/large), decides which phases apply, delegates each one to the
+skill that already owns it (see the phase mapping table above), tracks the run as a
+manifest at `docs/pipeline/<slug>.md`, and auto-escalates `security-review` whenever a
+diff touches auth/secrets/DB regardless of size.
+
+Three thin entry points sit on top of it — `sdlc-new-feature`, `sdlc-fix`,
+`sdlc-redesign` — each just captures the raw request, derives a slug, and invokes
+`sdlc-pipeline` with a `kind`. All four (the engine and the three entry points) are
+`disable-model-invocation: true`. That's deliberate, not an oversight: `diagnosing-bugs`
+already owns "debug this," `redesign-skill` already owns "redesign this page," and
+`discovery-ideation` already owns raw feature ideation — a model-invoked pipeline
+sitting on top would compete with all three for the same triggers, which is exactly
+what the composition rule below exists to prevent. Reach for an `sdlc-*` skill by name
+when the work is worth the full gated trail; the underlying skills remain reachable
+directly for anything lighter.
+
+Large efforts (ambiguous scope, more than one session) route through `wayfinder`
+first rather than through the pipeline directly — each resulting decision ticket
+re-enters the pipeline on its own once resolved.
+
 ## SDLC phase mapping (in progress)
 
 | Phase | Skills |
@@ -117,18 +143,19 @@ this repo is meant to be edited, not just mirrored from upstream.
 `agents/` holds full phase agents (still mostly TBD) plus any ready-made agent worth
 keeping as-is:
 
-- `design-review` — live-browser (Playwright MCP) UI reviewer: screenshots each
-  viewport tier, checks WCAG 2.1 AA, runs a 7-phase review, returns ranked findings
-  (Blockers → Nitpicks). `scoville-ui-anti-ai-slop/references/validation.md` now
-  points to it as the mechanism for a full multi-viewport audit, so the two don't
-  compete — the guardrail skill still owns what counts as sufficient evidence, this
-  agent owns driving the browser. Reference commands (`design-plan`, `design-review`)
-  and its heuristic fallback script (`design-audit.mjs`, used when no MCP browser is
-  available) live in `agents/design-review-refs/`.
-  **Caveat:** needs `mcp__playwright` or `mcp__chrome-devtools` installed to drive a
-  real browser — neither is currently configured in this environment (which uses
-  `claude-in-chrome` instead per this machine's CLAUDE.md). Until one of those MCP
-  servers is added, it falls back to the heuristic-only script.
+- `design-review` — live-browser UI reviewer: screenshots each viewport tier, checks
+  WCAG 2.1 AA, runs a 7-phase review, returns ranked findings (Blockers → Nitpicks).
+  `scoville-ui-anti-ai-slop/references/validation.md` now points to it as the
+  mechanism for a full multi-viewport audit, so the two don't compete — the
+  guardrail skill still owns what counts as sufficient evidence, this agent owns
+  driving the browser. Reference commands (`design-plan`, `design-review`) and its
+  heuristic fallback script (`design-audit.mjs`, used only if browsing fails) live
+  in `agents/design-review-refs/`.
+  Drives the browser via gstack's `browse` skill (`tools: Skill, Read, Grep, Glob,
+  Bash`) rather than `mcp__playwright`/`mcp__chrome-devtools` — this machine's
+  CLAUDE.md mandates `browse` for all web automation and forbids raw
+  `mcp__claude-in-chrome__*` calls, so the agent was rewired to go through it
+  instead of depending on an MCP server that was never installed here.
 
 ## Composition notes
 
