@@ -253,6 +253,20 @@ reusing this repo outside personal use.
 - `handoff` — compacts the current conversation into a handoff document for another
   agent to pick up
 
+**Vendored from [affaan-m/ECC](https://github.com/affaan-m/ECC)** (its efficiency-skill
+catalogue; skipped `cost-tracking`, `delivery-gate`, and `plan-orchestrate` as tied to
+ECC's own local metrics log, Stop-hook scripts, and `/orchestrate` agent catalogue —
+none of which exist here; `cost-aware-llm-pipeline`, `parallel-execution-optimizer`, and
+`agent-harness-construction` also left unvendored as reference material rather than
+direct token-savings tooling):
+- `context-budget` — audits token overhead across agents/skills/MCP servers/rules/
+  CLAUDE.md in both this machine's config dirs, ranks savings
+- `config-gc` — human-confirmed, soft-delete-first cleanup of stale skills/memory/
+  hooks/permissions/MCP servers/caches; the subtractive counterpart to `context-budget`
+- `strategic-compact` — advisory-only version (the upstream hook that reads live
+  transcript token counts wasn't vendored): when to `/compact` at phase boundaries,
+  what survives compaction, lazy-loading and context-composition patterns
+
 **Vendored from [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)**
 (skipped its `design`/`brand`/`banner-design`/`slides` skills as redundant with or out
 of scope of what's already here):
