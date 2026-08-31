@@ -116,30 +116,55 @@ For each phase your size classification includes, in order:
 aligned on candidate concepts.** `frontend-design` and `redesign-skill` are both capable of
 deciding a direction and building it in the same pass if you invoke them directly — that's fine
 for a standalone ad-hoc request, but inside this pipeline it would silently defeat the whole
-"prototype before you decide" premise the Design phase exists for. Sequence it explicitly:
+"prototype before you decide" premise the Design phase exists for. Sequence it explicitly, and
+pick the prototype format by what's being designed:
+
+**Prototype format — coded HTML is the default, `imagegen` is the exception.** For app/product
+screens (dashboards, forms, data views, anything with real entities and state), build a
+self-contained HTML/CSS prototype directly — hand-coded, no image-gen model call — rather than
+reaching for `imagegen-frontend-web`/`imagegen-frontend-mobile`. It's cheaper (one artifact, zero
+image-gen calls), and it's the format that actually lets the user read real content instead of
+looking at a picture of it. Reserve `imagegen-frontend-web`/`imagegen-frontend-mobile` for
+marketing pages, landing pages, and other primarily-visual/narrative surfaces — its documented
+specialty, and the one case a static concept image genuinely beats a coded mock.
+
+**Ground every candidate in the real screens, free the tokens.** Before drafting anything, read
+the current app's actual code (or a live screenshot) for the screen(s) in scope, and pull its
+real information architecture and entity shapes — for a redesign this is `redesign-skill`'s
+Scan/Diagnose step; for a new feature, read the surrounding screens it'll sit beside. Populate
+every candidate with **realistic mock data matching that real shape** (real field names, real
+entity types, believable sample values), not an abstracted generic pattern invented from the
+brief alone — a mockup of *this* app's actual accounts/paychecks/goals screen, not "a dashboard."
+Grounding is about content and structure, not palette: each candidate is free to use an entirely
+new token system, unconstrained by the app's current design tokens — that freedom is the point
+of proposing candidates at all. (`redesign-skill`'s later Fix step is where "improve without
+breaking functionality" constrains things again, once a direction is picked.)
 
 **Forward (`kind: feature`, or `harden` if it touches UI):**
 1. `ui-ux-pro-max` gathers data — styles, palette/reasoning profiles, font pairings, UX
-   guidelines — and from it proposes **2-3 genuinely distinct candidate directions** for the
-   brief, not one. "Distinct" means a different aesthetic category each (e.g. warm-editorial vs.
-   dark-luxury vs. neobrutalist), not three palette variations on the same idea.
-2. `imagegen-frontend-web`/`imagegen-frontend-mobile` generates concept images for each
-   candidate — scope this to the key screen(s), not a full multi-section page, so three
-   directions stays cheap to produce and cheap to compare.
-3. **Gate here**, before `frontend-design` touches any code: present the candidates through
-   `AskUserQuestion` (per this repo's question-UI convention) and get the user's pick, or a
-   steer toward a fourth direction, before anything else runs.
+   guidelines — and from it proposes **2 genuinely distinct candidate directions** for the
+   brief (3 only if the user asks for wider spread). "Distinct" means a different aesthetic
+   category each (e.g. warm-editorial vs. dark-luxury vs. neobrutalist), not palette variations
+   on the same idea.
+2. Build one self-contained HTML artifact with a tab/switcher between the candidates (see
+   "Prototype format" above), each populated with realistic mock data for the real screen(s) in
+   scope, each free to use its own token system.
+3. **Gate here**, before `frontend-design` touches any code: present the artifact and get the
+   user's pick through `AskUserQuestion` (per this repo's question-UI convention), or a steer
+   toward a different direction, before anything else runs.
 4. Only now does `frontend-design` run — building out the token system and real implementation
    for the *already-chosen* direction. Its own internal skillsui.app checkpoint still applies as
    a second opinion on the chosen direction, not as the first alignment moment.
 5. `silk-design` executes craft/motion; `design-system` formalizes tokens and component specs.
 
 **Reverse (`kind: redesign`):**
-1. `redesign-skill`'s **Scan** and **Diagnose** steps only — audit the existing site and list
-   what's generic/weak. Stop before its **Fix** step; don't apply anything yet.
-2. `imagegen-frontend-web`/`imagegen-frontend-mobile` generates concept images for 2-3 distinct
-   upgrade directions, informed by the diagnosis, scoped to the key screen(s) being redesigned.
-3. **Gate here**: present the candidates through `AskUserQuestion`, get the user's pick.
+1. `redesign-skill`'s **Scan** and **Diagnose** steps only — audit the existing site's real
+   screens and content, list what's generic/weak. Stop before its **Fix** step; don't apply
+   anything yet.
+2. Build one self-contained HTML artifact with a tab/switcher between 2 distinct upgrade
+   directions (per "Prototype format" and "Ground every candidate" above), informed by the
+   diagnosis, populated with mock data matching the real screen(s) being redesigned.
+3. **Gate here**: present the artifact, get the user's pick through `AskUserQuestion`.
 4. `redesign-skill`'s **Fix** step now applies the chosen direction against the existing stack.
 5. `silk-design` and `design-system` as above, if the redesign's scope warrants formalizing
    tokens rather than just landing the fix.
