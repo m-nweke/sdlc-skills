@@ -75,6 +75,13 @@ question directly, then spawns a continuation with your answer. The master orche
 also picks a model per phase (`haiku` for mechanical work, `sonnet` for typical phase
 work, `opus` for judgment-heavy decisions) rather than running every phase on one default.
 
+While this is still early and phase-sizing judgment is unproven, every context-budget
+relay gets surfaced to you directly — which phase, what its agent was tasked with, that
+it hit budget and relayed — rather than the master orchestrator quietly spawning a
+continuation and moving on. It's a notification, not a gate; the point is building a
+shared picture across runs of which phases keep running big, so their scoping gets tuned
+deliberately later instead of guessed at again each time.
+
 Gates stay human-only for now, by design. Every gate decision — what was presented,
 Approve/Revise/Regenerate/Skip, and why — is recorded distinctly enough that a future
 policy of auto-approving one specific, proven-trustworthy phase can be a targeted change

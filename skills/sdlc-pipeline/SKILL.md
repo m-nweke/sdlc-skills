@@ -239,6 +239,18 @@ works from proxies, not a live number.
   `3 (1 context-relay, 1 input-relay)`) — a phase that relays often, especially on trigger 1, is a
   signal its upfront scope judgment keeps landing wrong, worth revisiting rather than re-guessing
   every time.
+- **While this pipeline is still early: surface every context-budget relay to the user, don't just
+  spawn quietly and move on.** This is temporary, not a permanent feature — while the phase-sizing
+  judgment above is still unproven, a context-budget relay is data worth seeing, not noise to
+  absorb. On trigger 1, before spawning the continuation, tell the user plainly: which phase, what
+  the phase-orchestrator was originally tasked with (the gist of its prompt, not the whole thing),
+  and that it hit budget and relayed. This is a notification, not a gate — don't block on
+  `AskUserQuestion` waiting for a decision, just say it and keep going; the point is building a
+  shared picture, over several runs, of which phases keep running big so their scoping can be
+  tuned deliberately later, not reacting to any single instance. This applies to yourself too: if
+  your *own* context is approaching the same threshold across a long run (many phases, many
+  relays), say so and consider writing your own handoff the same way, rather than pushing on
+  silently just because nothing forces you to stop.
 
 ## Model selection
 
