@@ -5,13 +5,19 @@ description: Internal orchestration engine for the sdlc-new-feature/sdlc-fix/sdl
 
 # SDLC Pipeline
 
-The shared engine every `sdlc-*` entry point delegates into. **You are the orchestrator, not the
-worker** — you never do phase work in your own context. You classify size, decide which phases
-apply, and for each one **spawn a fresh subagent through the Agent tool** to do the actual work
-(invoke the delegate skill(s), produce the phase's artifact, report back). Your own job is only
-the parts nothing else owns: sizing the effort, sequencing the phases, spawning and gating
-between them, and tracking the run. See the phase table below and this repo's `README.md` for
-the full composition rationale of what each phase delegates to.
+The shared engine every `sdlc-*` entry point delegates into. **You are the master orchestrator,
+not a worker.** You never do phase work in your own context. You classify size, decide which
+phases apply, and for each one **spawn a phase-orchestrator through the Agent tool** — one per
+phase, of the seven in the table below (Discovery, Research, Design, Plan/Architecture, Implement,
+Review/QA, Ship). A phase-orchestrator owns getting *its* phase to a finished artifact: it invokes
+the delegate skill(s) directly if the phase is small enough, or, if its own scope needs it, spawns
+further sub-agents under itself (one per ticket/seam/file-group) and consolidates their reports —
+that decomposition is the phase-orchestrator's call to make, not yours; you only ever see one
+report per phase either way. Your own job is only the parts nothing else owns: sizing the effort,
+sequencing the phases, spawning and gating between them, relaying anything a phase-orchestrator
+can't handle itself (see **Relay protocol** below), and tracking the run. See the phase table
+below and this repo's `README.md` for the full composition rationale of what each phase
+delegates to.
 
 **Every phase transition gates on explicit user approval — no exceptions by default.** That's a
 deliberate departure from lighter shared-pipeline designs that gate only after planning and
@@ -40,7 +46,7 @@ abstraction in this report pass the deletion test (concentrate complexity, not j
 scope quietly grown past the ticket or spec it's answering? If something reads off, **say so in
 the gate summary as a named concern**, not a buried caveat — the user still decides, but they
 decide with the real issue in front of them, not a polished summary that smoothed over it. If the
-phase agent already ran one of those skills itself, this is a cheap second pass confirming its
+phase-orchestrator already ran one of those skills itself, this is a cheap second pass confirming its
 work, not redundant re-analysis.
 
 **This judgment is built through evidence, the same way gate automation trust is (see above), not
@@ -51,13 +57,23 @@ record is the actual mechanism for "getting there": a principal architect's disc
 setting to turn on, it's a track record substantial enough to trust, and this pipeline is how one
 gets built, gate by gate, run by run.
 
-**Every phase runs in its own spawned agent, never inline in yours.** One agent (you) starts the
-run and creates the agents needed to complete it, one phase at a time — it never does the phase
-work itself by loading a skill's instructions directly into its own context. This keeps your own
-context to just spawn prompts, short summaries, and gate decisions, so it stays small enough to
-orchestrate a long run without itself becoming the bottleneck. See **Context budget** below for
-how this composes with phases that are themselves too big for one agent, or turn out too big only
-once already underway.
+**Every phase runs under its own phase-orchestrator, never inline in yours.** One agent (you)
+starts the run and creates the agents needed to complete it, one phase at a time — it never does
+the phase work itself by loading a skill's instructions directly into its own context. This keeps
+your own context to just spawn prompts, short summaries, and gate decisions, so it stays small
+enough to orchestrate a long run without itself becoming the bottleneck. See **Relay protocol**
+below for how this composes with phases that are themselves too big for one agent, turn out too
+big only once already underway, or need to ask the user something mid-task — the last of which
+a phase-orchestrator can't do on its own.
+
+**A phase-orchestrator cannot interactively prompt the user — only you can.** It's a spawned
+subagent: it runs to completion and returns a result, it isn't part of your live conversation with
+the user, so it has no path to actually surface an `AskUserQuestion` call to a person and wait for
+their answer. Several delegate skills assume they can ask mid-task (`grilling`'s rounds, a seam
+confirmation in `tdd`, `to-tickets`' breakdown gate, ...) — that assumption holds when a human
+invokes those skills directly, but breaks the moment they're running inside a phase-orchestrator
+you spawned. **Relay protocol** below is how that gets bridged: every phase-orchestrator's prompt
+must carry the instruction to stop and relay instead of trying to ask directly.
 
 ## Inputs
 
@@ -104,12 +120,14 @@ misclassification before any phase work happens.
 
 ## 2. Large efforts: chart before you pipeline
 
-Don't run this pipeline against an effort too big to see the shape of. Spawn an agent to invoke
-`wayfinder` instead, using the request as the destination to chart — charting is itself real
-interviewing and mapping work, not orchestration bookkeeping, so it follows the same spawn rule
-as any phase. Each resulting decision ticket, once resolved, re-enters this pipeline on its own
-as a `standard` (or smaller) run — that's a fresh invocation with its own slug, not a loop
-inside this one.
+Don't run this pipeline against an effort too big to see the shape of. Spawn a phase-orchestrator
+to invoke `wayfinder` instead, using the request as the destination to chart — charting is itself
+real interviewing and mapping work, not orchestration bookkeeping, so it follows the same spawn
+rule as any phase, **including the Relay protocol below**: `wayfinder` charts by grilling
+(breadth-first, per its own process), which means real mid-task questions for the user — the
+charting agent will relay for those exactly like any other phase-orchestrator would. Each
+resulting decision ticket, once resolved, re-enters this pipeline on its own as a `standard` (or
+smaller) run — that's a fresh invocation with its own slug, not a loop inside this one.
 
 ## 3. Track the run
 
@@ -141,68 +159,90 @@ this file shows whether a phase stayed appropriately scoped or had to be split f
 
 For each phase your size classification includes, in order:
 
-1. **Write a self-contained prompt** for the phase — the spawned agent starts with zero context,
-   so include: `kind`/`slug`/`request`, which delegate skill(s) to invoke (from the table below),
-   the exact artifact to produce and where to save it, *pointers* (file paths, not pasted content)
-   to any prior phase artifacts it needs to read, and the **self-monitoring instruction** from
-   Context budget below — every spawned agent needs that instruction in its own prompt, since it
-   never reads this file itself. Never paste a prior artifact's full content into the prompt —
-   that's exactly the accumulation this design avoids.
+1. **Write a self-contained prompt** for the phase-orchestrator — it starts with zero context, so
+   include: `kind`/`slug`/`request`, which delegate skill(s) to invoke (from the table below), the
+   exact artifact to produce and where to save it, *pointers* (file paths, not pasted content) to
+   any prior phase artifacts it needs to read, and **both standing instructions from Relay
+   protocol below** (context-budget self-monitoring, and the no-direct-user-contact rule) — every
+   phase-orchestrator needs both in its own prompt, since it never reads this file itself. Never
+   paste a prior artifact's full content into the prompt — that's exactly the accumulation this
+   design avoids.
 2. **Pick a model** for the task (see **Model selection** below) and **spawn it with the Agent
    tool** — omit `subagent_type` (general-purpose) unless a named agent already fits (e.g.
    `design-review` for a live-browser QA pass). Never use `subagent_type: "fork"` for phase work —
    a fork inherits your full conversation context, which defeats the entire point of a fresh,
    scoped agent.
-3. Record the artifact path or tracker link the agent reports back, which model it ran on, and
-   how many agents it took (1, unless the phase decomposed or relayed further — see **Context
-   budget**), in the run manifest.
-4. Present a short summary of what the phase produced — not the full artifact, the artifact
+3. **Handle whatever it reports back** — a finished artifact, or a relay (context-budget or
+   needs-user-input; see **Relay protocol**). A relay isn't the phase failing, it's the phase-
+   orchestrator doing exactly what it was told to do when it hit one of those two triggers; resolve
+   it (answer the question, or just spawn the continuation) and keep going.
+4. Record the artifact path or tracker link, which model it ran on, and how many agents it took
+   (1, unless the phase decomposed or relayed further — see **Relay protocol**), in the run
+   manifest.
+5. Present a short summary of what the phase produced — not the full artifact, the artifact
    *is* the detail — and gate with `AskUserQuestion`: **Approve** (spawn the next phase's agent),
    **Revise** (spawn a fresh agent to adjust this phase's artifact, re-gate), or **Skip remaining
    phases** (jump straight to Ship with what exists so far). Do not spawn the next phase's agent
    without an explicit Approve — the artifact must be raised and reviewed by the user before it
    hands off.
-5. Update the run manifest's gate decision before moving on.
+6. Update the run manifest's gate decision before moving on.
 
-## Context budget: spawn, monitor, relay
+## Relay protocol
 
-**No agent's task — yours or a phase agent's — should run past roughly 40% of its context
-window.** There's no tool that reports a running agent's actual context usage, yours or a spawned
-agent's — every lever here works from proxies, not a live number. Three levers, in order:
+A phase-orchestrator stops and hands back to you for exactly two reasons — both because of things
+only you can do: keep your own context small, and talk to the user. Both share one mechanism:
+write a handoff, report a relay instead of a finish, you resolve it and spawn a continuation.
+
+**No agent's task — yours or a phase-orchestrator's — should run past roughly 40% of its context
+window.** There's no tool that reports a running agent's actual context usage — every lever here
+works from proxies, not a live number.
 
 - **You never absorb phase content.** Your context holds spawn prompts, the short summary each
-  agent reports back, and gate decisions — never a phase's actual working content. That's what
-  keeps *your* context small across an entire multi-phase run, and it's the one lever that's a
-  hard guarantee rather than a proxy.
+  phase-orchestrator reports back, and gate decisions — never a phase's actual working content.
+  That's the one lever that's a hard guarantee rather than a proxy, and it's what keeps *your*
+  context small across an entire multi-phase run.
 - **Judge scope before you spawn, decompose if it's already too big.** If a phase's own scope
   looks too large for one agent before you spawn it — many tickets in Implement, a sprawling
-  Review, a large-surface codebase exploration in Plan — spawn it as a small coordinating agent
-  whose job is itself to spawn one sub-agent per ticket/seam/file-group, collect their reports,
-  and return *one* consolidated artifact and summary to you. You still only see one report either
+  Review, a large-surface codebase exploration in Plan — its phase-orchestrator's job includes
+  spawning one sub-agent per ticket/seam/file-group itself, collecting their reports, and
+  returning *one* consolidated artifact and summary to you. You still only see one report either
   way; the decomposition happens a level down. Judge this from scope up front (file count, ticket
   count, breadth of concern) — a task that's "one focused thing" fits in an agent; a task that's
   "several of those" doesn't.
-- **A phase agent that turns out too big mid-task self-monitors and relays.** Upfront judgment
-  misses sometimes — a task looks scoped and then sprawls once the agent is actually inside it.
-  Every spawned agent's prompt must carry this instruction (write it into every prompt in step 4
-  above, verbatim in spirit): *watch proxies for rising context use — many files read, many tool
-  calls made, output that's already exceeded what "one focused thing" should produce, or
-  discovering the task is bigger than the prompt implied. At that signal, stop starting new work.
-  Instead, write a handoff document to `docs/pipeline/<slug>-relay-<phase>.md`: what's done, what
-  remains, the key facts and decisions reached, pointers to files touched (not their content), and
-  the exact next step — then report back that this task needs to be relayed, not that it's done.*
-  On a relay report, spawn a **continuation agent** whose entire prompt is "read the handoff at
-  `<path>` and continue" — the handoff *is* its context, it needs nothing else. Once it confirms
-  pickup, the prior agent's turn is simply over: there's no running process to stop, its thread
-  just stops being referenced. A continuation can relay again itself if the remaining work is
-  still too big — chain as many hops as the task genuinely needs. Record every hop in the run
-  manifest's **Agent(s) spawned** count (e.g. `2 (1 relay)`) — a phase that relays often is a
+- **Trigger 1 — context budget.** Upfront judgment misses sometimes: a task looks scoped and then
+  sprawls once the phase-orchestrator is actually inside it. Every prompt must carry this
+  instruction, verbatim in spirit: *watch proxies for rising context use — many files read, many
+  tool calls made, output that's already exceeded what "one focused thing" should produce, or
+  discovering the task is bigger than the prompt implied. At that signal, stop starting new work.*
+- **Trigger 2 — needs user input.** Several delegate skills assume they can prompt the user
+  mid-task (`grilling`'s rounds, a seam confirmation in `tdd`, `to-tickets`' breakdown gate, a
+  clarifying-question step, ...) — but a phase-orchestrator has no path to a live human, so it
+  can't actually call `AskUserQuestion` and get an answer. Every prompt must also carry this
+  instruction: *if the work requires asking the user anything, stop before asking — don't guess an
+  answer, don't skip the question, don't attempt `AskUserQuestion` yourself.*
+- **What a relay looks like, either trigger.** Write a handoff to `docs/pipeline/<slug>-relay-
+  <phase>-<n>.md`: what's done, what remains, key facts and decisions reached so far, pointers to
+  files touched (not their content), and the exact next step. For trigger 2, also include the
+  *exact* question(s) it needs answered, already shaped as `AskUserQuestion` params (question,
+  header, options, multiSelect) — the phase-orchestrator is closer to the work and knows the real
+  options; don't make it hand you a vague question to reframe. Then report back a relay, not a
+  finish, naming which trigger and, for trigger 2, the prepared question(s).
+- **What you do with a relay.** Context-budget relay: spawn a **continuation agent** whose entire
+  prompt is "read the handoff at `<path>` and continue" — the handoff *is* its context, it needs
+  nothing else. Needs-user-input relay: call `AskUserQuestion` **yourself**, using the exact
+  question(s) the phase-orchestrator prepared (you're relaying, not reframing), then spawn a
+  continuation agent with "read the handoff at `<path>`, the user answered: `<answer>`, continue."
+  Either way, once the continuation confirms pickup, the prior agent's turn is simply over — no
+  running process to stop, its thread just stops being referenced. A continuation can relay again
+  itself, on either trigger, if the remaining work needs it — chain as many hops as the task
+  genuinely needs. Record every hop in the run manifest's **Agent(s) spawned** count (e.g.
+  `3 (1 context-relay, 1 input-relay)`) — a phase that relays often, especially on trigger 1, is a
   signal its upfront scope judgment keeps landing wrong, worth revisiting rather than re-guessing
   every time.
 
 ## Model selection
 
-Pick a `model` for each spawned agent rather than leaving every phase on one default — the Agent
+Pick a `model` for each phase-orchestrator rather than leaving every phase on one default — the Agent
 tool takes it directly:
 
 - **Mechanical or narrow** (formatting an already-agreed ticket breakdown, a small config fix, a
@@ -264,10 +304,10 @@ broader visual-identity change — don't default to either silently. (`redesign-
 step is where "improve without breaking functionality" constrains things again, once a direction
 is picked, regardless of which way this was answered.)
 
-This naturally splits into two spawned agents with a gate between them — the concrete example of
-**Context budget** above: the prototype work (research + N candidate mockups) and the real build
-are different-enough-sized tasks that bundling them into one agent risks exactly the overrun this
-whole design exists to avoid.
+This naturally splits into two phase-orchestrators with a gate between them — the concrete example
+of **Relay protocol** above: the prototype work (research + N candidate mockups) and the real
+build are different-enough-sized tasks that bundling them into one agent risks exactly the
+overrun this whole design exists to avoid.
 
 **Forward (`kind: feature`, or `harden` if it touches UI):**
 1. **Spawn Agent 1 — prototype.** Prompt it to run `ui-ux-pro-max` for data (styles,

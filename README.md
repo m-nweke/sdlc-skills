@@ -45,23 +45,35 @@ table, state carried as files rather than hidden context) but gated at **every**
 transition rather than just twice (after planning, before commit) — reduced supervision
 gets earned per phase as it proves reliable, not assumed up front.
 
-It also never does phase work in its own context. One agent starts a run and creates the
-agents it needs to complete it, one phase at a time, through the Agent tool — never by
-loading a phase's skill directly into the orchestrator's own conversation. Each spawned
-agent's task ends in a concrete artifact, which is raised and reviewed by you before it's
-handed to the next agent, and the orchestrator itself only ever holds spawn prompts and
-short summaries, never a phase's full working content. The goal behind that split: no
-single agent's task — orchestrator or phase — should run past roughly 40% of its context
-window. There's no tool that reports a running agent's actual usage, so it's enforced two
-ways: scope judged up front (a phase whose own scope is too large — many tickets, a
-sprawling review — decomposes into a small coordinator spawning one sub-agent per
-ticket/seam, one level down), and self-monitoring at runtime for when upfront judgment
-misses — every spawned agent watches its own proxies (files read, tool calls made, scope
-creep against the prompt) and, on that signal, writes a handoff document instead of
-pushing on, so the orchestrator can spawn a continuation agent that picks up from the
-handoff with a clean context and finishes the phase. The orchestrator also picks a model
-per phase (`haiku` for mechanical work, `sonnet` for typical phase work, `opus` for
-judgment-heavy decisions) rather than running every phase on one default.
+It also never does phase work in its own context. `sdlc-pipeline` is the **master
+orchestrator**: it starts a run and creates the agents it needs to complete it, one per
+phase, through the Agent tool — never by loading a phase's skill directly into its own
+conversation. Each of the seven phases (Discovery, Research, Design, Plan/Architecture,
+Implement, Review/QA, Ship) gets its own **phase-orchestrator** — an agent that owns
+getting *that* phase to a finished artifact, invoking the delegate skill directly if the
+work is small enough, or spawning further sub-agents under itself (one per ticket/seam)
+if it isn't; the master orchestrator only ever sees one report per phase either way. Each
+phase's artifact is raised and reviewed by you before it's handed to the next phase, and
+the master orchestrator itself only ever holds spawn prompts and short summaries, never a
+phase's full working content.
+
+The goal behind that split: no single agent's task — master or phase-orchestrator —
+should run past roughly 40% of its context window. There's no tool that reports a
+running agent's actual usage, so it's enforced through a **relay protocol** with two
+triggers. Context budget: scope is judged up front (a phase whose own scope is too large
+decomposes into a small coordinator spawning one sub-agent per ticket/seam, one level
+down), and every phase-orchestrator self-monitors at runtime for when upfront judgment
+misses — on rising proxies (files read, tool calls, scope creep against the prompt) it
+writes a handoff document instead of pushing on, and the master orchestrator spawns a
+continuation agent that picks up from the handoff with a clean context. Needs user input:
+a phase-orchestrator is a spawned subagent, not part of the live conversation, so it
+can't actually surface a question to you itself — several delegate skills assume they can
+prompt mid-task (`grilling`'s rounds, a seam confirmation in `tdd`, ...), and that only
+works because the master orchestrator relays: the phase-orchestrator stops, writes the
+exact question it needs answered into its handoff, the master orchestrator asks you that
+question directly, then spawns a continuation with your answer. The master orchestrator
+also picks a model per phase (`haiku` for mechanical work, `sonnet` for typical phase
+work, `opus` for judgment-heavy decisions) rather than running every phase on one default.
 
 Gates stay human-only for now, by design. Every gate decision — what was presented,
 Approve/Revise/Regenerate/Skip, and why — is recorded distinctly enough that a future
@@ -119,24 +131,29 @@ Each one just captures your request, gives it a short slug, and hands off to
 
 1. **Sizes the effort** — trivial, small, standard, or large — and tells you which
    phases it's about to run before running any of them.
-2. **Spawns a fresh agent per phase** rather than doing the work itself — one agent
-   starts the run and creates the agents needed to complete it, one at a time, each
-   invoking the skill that owns that phase (discovery, research, design,
+2. **Spawns a phase-orchestrator per phase** rather than doing the work itself — the
+   master orchestrator creates the agents needed to complete the run, one phase at a
+   time, each invoking the skill that owns that phase (discovery, research, design,
    planning/architecture, implementation, review, shipping — the full map is in
    [SDLC phase mapping](#sdlc-phase-mapping)), on whichever model fits the task
    (mechanical work gets a cheaper model, judgment-heavy work gets a stronger one). The
-   orchestrating agent's own context never absorbs a phase's working content, only the
-   short summary each spawned agent reports back — that's what keeps a long run from
-   blowing out its context window. A phase whose own scope is too large for one agent
-   (many tickets in Implement, a sprawling Review) decomposes the same way one level
-   down: a small coordinating agent spawns one sub-agent per ticket/seam and returns a
-   single consolidated report. And if a phase turns out too big only once it's already
-   underway, the agent doing it notices (rising files-read/tool-call proxies, scope
-   creeping past the prompt), writes a handoff instead of pushing through, and the
-   orchestrator spawns a continuation agent to pick it up with a clean context.
-3. **Stops after every phase** and shows you what the spawned agent produced. You get
-   three choices: **Approve** (spawn the next phase's agent), **Revise** (spawn a fresh
-   agent to adjust this phase's artifact), or **Skip remaining phases** (ship what
+   master orchestrator's own context never absorbs a phase's working content, only the
+   short summary each phase-orchestrator reports back — that's what keeps a long run
+   from blowing out its context window. A phase whose own scope is too large for one
+   agent (many tickets in Implement, a sprawling Review) decomposes the same way one
+   level down: the phase-orchestrator spawns one sub-agent per ticket/seam itself and
+   returns a single consolidated report. If a phase turns out too big only once it's
+   already underway, its phase-orchestrator notices (rising files-read/tool-call
+   proxies, scope creeping past the prompt), writes a handoff instead of pushing
+   through, and the master orchestrator spawns a continuation agent to pick it up with a
+   clean context. And since a phase-orchestrator is a spawned subagent, not part of your
+   live conversation, it can't ask you anything directly either — when the work it's
+   running needs to (`grilling`'s rounds, a seam confirmation, ...), it relays the exact
+   question back the same way, the master orchestrator asks you directly, and spawns the
+   continuation with your answer.
+3. **Stops after every phase** and shows you what the phase-orchestrator produced. You
+   get three choices: **Approve** (spawn the next phase's agent), **Revise** (spawn a
+   fresh agent to adjust this phase's artifact), or **Skip remaining phases** (ship what
    exists now). The artifact is raised and reviewed by you before it's ever handed to
    the next agent — nothing advances without your say-so.
 4. **Tracks the run** in `docs/pipeline/<slug>.md` in the project you're working in —
