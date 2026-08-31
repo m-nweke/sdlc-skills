@@ -164,9 +164,11 @@ For each phase your size classification includes, in order:
    exact artifact to produce and where to save it, *pointers* (file paths, not pasted content) to
    any prior phase artifacts it needs to read, and **both standing instructions from Relay
    protocol below** (context-budget self-monitoring, and the no-direct-user-contact rule) — every
-   phase-orchestrator needs both in its own prompt, since it never reads this file itself. Never
-   paste a prior artifact's full content into the prompt — that's exactly the accumulation this
-   design avoids.
+   phase-orchestrator needs both in its own prompt, since it never reads this file itself. If the
+   phase will write or edit code (Implement, the Design phase's build agent, a Review/QA fix, a
+   Ship-phase conflict resolution), its prompt must also carry the **comment policy** below.
+   Never paste a prior artifact's full content into the prompt — that's exactly the accumulation
+   this design avoids.
 2. **Pick a model** for the task (see **Model selection** below) and **spawn it with the Agent
    tool** — omit `subagent_type` (general-purpose) unless a named agent already fits (e.g.
    `design-review` for a live-browser QA pass). Never use `subagent_type: "fork"` for phase work —
@@ -269,6 +271,25 @@ whether it's ballooning can tally its own accumulated file reads and tool output
   actually large, suggest `/compact` to the user rather than defaulting to pushing straight into
   the next phase — the run manifest and phase artifacts on disk are what needs to survive, per
   `strategic-compact`'s "what persists" table, not your conversation history.
+
+## Comment policy for code-writing phases
+
+None of the delegate skills a code-writing phase invokes (`tdd`, `implement`, `frontend-design`,
+`ui-styling`, `silk-design`, a Review/QA fix, `resolving-merge-conflicts`) state a comment policy
+of their own, and a phase-orchestrator's prompt is the only thing it ever reads — so any phase
+that will write or edit code must carry this instruction in its own prompt, verbatim in spirit:
+
+*Comments exist to make the application more readable and understandable, not to narrate what you
+just did. Write one only where what the code is doing genuinely isn't obvious from the code
+itself — an inferred rule, a non-obvious constraint, a workaround for something specific — never
+to restate what a well-named function or variable already says. Keep it to one line where
+possible, and make it self-contained: a comment that only makes sense next to a ticket, a PR
+description, or "as discussed" has failed at being a comment. Never reference a ticket number,
+issue key, or this pipeline run in a comment — that's provenance, and it belongs in the commit
+message and PR description, not the file.*
+
+This is the same rule `work-ticket` already carries for its own fast-path flow — a ticket worked
+through either path produces the same comment discipline.
 
 ## Model selection
 

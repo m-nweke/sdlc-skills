@@ -43,7 +43,7 @@ Minimal, per the rule above.
 
 **Drive it test-first via the `tdd` skill (red-green-refactor)** whenever there's a clear pass/fail signal to hang a test on — a bug fix especially, since the fail-before/pass-after proof Step 5 requires falls out of doing this instead of being written after the fact. Skip it only for changes with nothing to assert against (pure config, copy, styling) or when the user has said not to.
 
-**Comments: one short line, only where intent is non-obvious.** Never restate what the code does. No ticket numbers in comments. This has been asked for repeatedly — do not make it a fourth time.
+**Comments: one short line, only where intent is non-obvious, always self-contained.** Never restate what the code does. A comment that only makes sense next to the ticket or "as discussed" has failed at being a comment. No ticket numbers in comments. This has been asked for repeatedly — do not make it a fourth time.
 
 ## 4.5 — Sweep the blast radius
 
