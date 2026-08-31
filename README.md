@@ -99,7 +99,8 @@ pipeline on its own.
 **A worked example:** you invoke `sdlc-new-feature` with "add a saved-searches feature
 to the app." The pipeline classifies it `standard`, runs Discovery (a grilled brief),
 gates. You approve. It runs Research, gates. You approve. It runs Design — pulling style
-data, proposing 2 distinct candidate directions, building them as one coded HTML
+data, proposing 3 distinct candidate directions, asking whether they should reuse the
+app's current tokens or explore fresh ones, then building them as one coded HTML
 prototype grounded in the real feature's screens with realistic mock data (not concept
 images — those stay reserved for marketing pages) so there's something real to click
 through before any real code exists — gates on your pick. Only then does it draft the
@@ -209,7 +210,7 @@ this repo is meant to be edited, not just mirrored from upstream.
 | --- | --- |
 | Discovery & Ideation | `discovery-ideation`, `grilling`, `wayfinder` (for oversized efforts) |
 | Research | `scoville-research`, `ui-ux-pro-max` (design-data lookups). For hardening, this is where current security/architecture best practices for the stack get gathered. |
-| Design | `ui-ux-pro-max` (data, 2 candidate directions) → coded HTML prototype grounded in the real screen(s), one candidate per token system (`imagegen-frontend-web`/`imagegen-frontend-mobile` only for marketing/landing pages) → **gate on a pick** → `frontend-design` (build the chosen direction) → `silk-design` (craft) → `design-system` (tokens/component specs); `redesign-skill` for existing sites, same prototype-before-fix order |
+| Design | `ui-ux-pro-max` (data, 3 candidate directions) → coded HTML prototype grounded in the real screen(s), tokens fixed or varied per an explicit ask (`imagegen-frontend-web`/`imagegen-frontend-mobile` only for marketing/landing pages) → **gate on a pick** → `frontend-design` (build the chosen direction) → `silk-design` (craft) → `design-system` (tokens/component specs); `redesign-skill` for existing sites, same prototype-before-fix order |
 | Code architecture | `codebase-design`, `domain-modeling`, `improve-codebase-architecture` (fed by Research's findings when hardening), `wayfinder`, `to-spec`, `to-tickets` |
 | Implementation | `tdd`, `prototype`, `implement`, `ui-styling`, `scoville-code-anti-ai-slop` |
 | QA | `scoville-code-anti-ai-slop` (review outcome), `diagnosing-bugs`, `scoville-ui-anti-ai-slop` (discipline) + `design-review` agent (live-browser mechanism); `security-review` (mandatory when hardening, auto-escalated otherwise on auth/secrets/DB diffs) |
@@ -257,32 +258,33 @@ the start rather than needing a retrofit.
 but aren't redundant — they compose in order:
 
 1. `ui-ux-pro-max` supplies research data — styles, palette/reasoning profiles, font
-   pairings, UX guidelines, relevant stack conventions — and from it proposes 2 genuinely
-   distinct candidate directions, not one (3 only on request)
-2. The candidates become **one self-contained coded HTML prototype** with a tab switcher
+   pairings, UX guidelines, relevant stack conventions — and from it proposes 3 genuinely
+   distinct candidate directions, not one
+2. The pipeline asks, through `AskUserQuestion`, whether candidates should reuse the app's
+   current design tokens or explore fresh ones too — never assumed silently either way
+3. The candidates become **one self-contained coded HTML prototype** with a tab switcher
    between them — hand-built, not `imagegen`-generated — grounded in the real screen(s)
    being designed (real information architecture, realistic mock data matching the app's
-   actual entity shapes) so there's something real to read, not a picture of one. Each
-   candidate is free to use an entirely new token system; grounding is about content and
-   structure, not being tied to the app's current palette. `imagegen-frontend-web`/
+   actual entity shapes) so there's something real to read, not a picture of one, with
+   tokens fixed or varied per the answer above. `imagegen-frontend-web`/
    `imagegen-frontend-mobile` stays reserved for marketing/landing pages — its documented
    specialty — where a static concept image is genuinely the better format.
-3. **The pipeline gates here**, through `AskUserQuestion`, before any real code exists —
+4. **The pipeline gates here**, through `AskUserQuestion`, before any real code exists —
    alignment on a direction happens against the coded prototype, not a described plan
-4. Only now does `frontend-design` decide the full aesthetic direction and build it
+5. Only now does `frontend-design` decide the full aesthetic direction and build it
    (palette, type, layout, copy) for the *already-chosen* concept — its own internal
    checkpoint against [skillsui.app/skills](https://www.skillsui.app/skills) is a second
    opinion on that choice, not the first alignment moment; it still sets its three
    numeric dials and self-critiques against the AI-tells list before shipping
-5. `silk-design` executes the agreed direction with concrete motion/craft recipes;
+6. `silk-design` executes the agreed direction with concrete motion/craft recipes;
    `design-system` formalizes the result into three-layer tokens and component specs
-6. `scoville-ui-anti-ai-slop` is the standing audit discipline (hierarchy,
+7. `scoville-ui-anti-ai-slop` is the standing audit discipline (hierarchy,
    accessibility, responsiveness, usability); `design-review` is the live-browser
    mechanism it dispatches for a full multi-viewport WCAG pass
 
 `redesign-skill` runs this same chain in reverse-gear for an existing site: its own
 **Scan**/**Diagnose** steps audit the real screens and content first, that diagnosis
-grounds a coded HTML prototype comparing 2 candidate upgrade directions, the pipeline
+grounds a coded HTML prototype comparing 3 candidate upgrade directions, the pipeline
 gates on a pick, then redesign-skill's **Fix** step applies it against the existing
 stack — never audit-straight-to-fix inside the pipeline, even though the skill is
 capable of that in one pass standalone. The full sequencing for both directions lives

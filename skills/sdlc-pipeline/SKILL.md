@@ -128,27 +128,31 @@ looking at a picture of it. Reserve `imagegen-frontend-web`/`imagegen-frontend-m
 marketing pages, landing pages, and other primarily-visual/narrative surfaces — its documented
 specialty, and the one case a static concept image genuinely beats a coded mock.
 
-**Ground every candidate in the real screens, free the tokens.** Before drafting anything, read
-the current app's actual code (or a live screenshot) for the screen(s) in scope, and pull its
-real information architecture and entity shapes — for a redesign this is `redesign-skill`'s
-Scan/Diagnose step; for a new feature, read the surrounding screens it'll sit beside. Populate
-every candidate with **realistic mock data matching that real shape** (real field names, real
-entity types, believable sample values), not an abstracted generic pattern invented from the
-brief alone — a mockup of *this* app's actual accounts/paychecks/goals screen, not "a dashboard."
-Grounding is about content and structure, not palette: each candidate is free to use an entirely
-new token system, unconstrained by the app's current design tokens — that freedom is the point
-of proposing candidates at all. (`redesign-skill`'s later Fix step is where "improve without
-breaking functionality" constrains things again, once a direction is picked.)
+**Ground every candidate in the real screens.** Before drafting anything, read the current app's
+actual code (or a live screenshot) for the screen(s) in scope, and pull its real information
+architecture and entity shapes — for a redesign this is `redesign-skill`'s Scan/Diagnose step;
+for a new feature, read the surrounding screens it'll sit beside. Populate every candidate with
+**realistic mock data matching that real shape** (real field names, real entity types, believable
+sample values), not an abstracted generic pattern invented from the brief alone — a mockup of
+*this* app's actual accounts/paychecks/goals screen, not "a dashboard." Grounding is about
+content and structure, not palette.
+
+**Ask whether tokens are in play, don't assume.** Before generating candidates, ask through
+`AskUserQuestion`: reuse the app's current design tokens (candidates vary layout/composition
+only), or explore fresh token systems too (candidates can each use a different palette/type
+system)? Both are legitimate depending on whether this is a targeted screen redesign or a
+broader visual-identity change — don't default to either silently. (`redesign-skill`'s later Fix
+step is where "improve without breaking functionality" constrains things again, once a direction
+is picked, regardless of which way this was answered.)
 
 **Forward (`kind: feature`, or `harden` if it touches UI):**
 1. `ui-ux-pro-max` gathers data — styles, palette/reasoning profiles, font pairings, UX
-   guidelines — and from it proposes **2 genuinely distinct candidate directions** for the
-   brief (3 only if the user asks for wider spread). "Distinct" means a different aesthetic
-   category each (e.g. warm-editorial vs. dark-luxury vs. neobrutalist), not palette variations
-   on the same idea.
+   guidelines — and from it proposes **3 genuinely distinct candidate directions** for the
+   brief. "Distinct" means a different aesthetic category each (e.g. warm-editorial vs.
+   dark-luxury vs. neobrutalist), not palette variations on the same idea.
 2. Build one self-contained HTML artifact with a tab/switcher between the candidates (see
    "Prototype format" above), each populated with realistic mock data for the real screen(s) in
-   scope, each free to use its own token system.
+   scope, tokens varying or fixed per the answer above.
 3. **Gate here**, before `frontend-design` touches any code: present the artifact and get the
    user's pick through `AskUserQuestion` (per this repo's question-UI convention), or a steer
    toward a different direction, before anything else runs.
@@ -161,9 +165,10 @@ breaking functionality" constrains things again, once a direction is picked.)
 1. `redesign-skill`'s **Scan** and **Diagnose** steps only — audit the existing site's real
    screens and content, list what's generic/weak. Stop before its **Fix** step; don't apply
    anything yet.
-2. Build one self-contained HTML artifact with a tab/switcher between 2 distinct upgrade
-   directions (per "Prototype format" and "Ground every candidate" above), informed by the
-   diagnosis, populated with mock data matching the real screen(s) being redesigned.
+2. Build one self-contained HTML artifact with a tab/switcher between 3 distinct upgrade
+   directions (per "Prototype format," "Ground every candidate," and the tokens question above),
+   informed by the diagnosis, populated with mock data matching the real screen(s) being
+   redesigned.
 3. **Gate here**: present the artifact, get the user's pick through `AskUserQuestion`.
 4. `redesign-skill`'s **Fix** step now applies the chosen direction against the existing stack.
 5. `silk-design` and `design-system` as above, if the redesign's scope warrants formalizing
