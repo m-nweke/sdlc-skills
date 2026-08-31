@@ -1,19 +1,132 @@
 # sdlc-skills
 
-Personal library of Claude Code skills and agents spanning the software development
-lifecycle: discovery/ideation, research, design, code architecture, implementation,
-QA, and deployment/shipping.
+A personal library of Claude Code skills and agents that carries a project from a raw
+idea to shipped code — discovery, research, design, architecture, TDD implementation,
+review, and shipping — through one gated pipeline, instead of one long unstructured
+chat.
 
-Skills here are the source of truth. Each is symlinked into `~/.claude/skills/<name>`
-so Claude Code loads it globally. Agents (once defined) live in `agents/` and are
-symlinked into `~/.claude/agents/<name>.md` the same way.
+## Why this exists
 
-## Skills
+Building real apps inside Claude Code without any structure tends to fail in a few
+specific, repeatable ways:
 
-Authored here:
+- **Design gets skipped or guessed.** Code gets written before anyone agrees on the
+  direction, so the first "finished" version is also the first thing anyone reacted to.
+- **No prototype before commitment.** A visual direction gets locked in by writing the
+  actual app, not by showing a few concepts and picking one.
+- **Skills collide.** Install enough community skills and several start firing on the
+  same request ("review this," "make it look better"), each with its own opinion,
+  competing rather than composing.
+- **Autonomy outruns trust.** A long agentic run with no checkpoints either needs
+  babysitting the whole way through, or gets trusted more than it's earned — there's no
+  middle ground where you approve each phase and stay out of the ones in between.
+- **Context by monologue.** Conversation history is the only record of what was decided
+  and why, so it either has to be re-explained to the next agent or session, or the
+  reasoning is just lost.
+
+This repo is one answer to all five: skills sourced from vetted third-party libraries
+(never installed blind — each one is read, adapted, and given exactly one job), composed
+into a pipeline that produces a written artifact at every phase (a brief, a spec, a
+token system, tickets, a review) and stops for your approval before moving to the next
+one.
+
+## How it was built
+
+Every skill here owns exactly one **altitude** — data, judgment, execution, or audit —
+so two skills never compete for the same trigger. When a candidate skill did the same
+job as something already here, its mechanism was folded in as a reference file instead
+of vendored as a second, competing skill (see [Composition notes](#composition-notes)).
+When altitudes genuinely differed, skills were kept separate and the composition order
+was written down explicitly, never left implicit.
+
+The result is `sdlc-pipeline`: a shared orchestration engine, loosely modelled on
+affaan-m/ECC's `orch-pipeline` design (a size classifier, a phase→skill delegation
+table, state carried as files rather than hidden context) but gated at **every** phase
+transition rather than just twice (after planning, before commit) — reduced supervision
+gets earned per phase as it proves reliable, not assumed up front.
+
+## Quick start
+
+1. Clone this repo somewhere permanent (not a temp directory).
+2. Symlink what you want into Claude Code's skills/agents directories:
+   ```bash
+   for skill in sdlc-skills/skills/*/; do
+     name=$(basename "$skill")
+     ln -s "$(pwd)/$skill" ~/.claude/skills/"$name"
+   done
+   for agent in sdlc-skills/agents/*.md; do
+     name=$(basename "$agent")
+     ln -s "$(pwd)/$agent" ~/.claude/agents/"$name"
+   done
+   ```
+   (Swap `~/.claude` for `~/.claude-personal` or wherever `CLAUDE_CONFIG_DIR` points, if
+   you keep separate personal/work configs — this repo is symlinked into both on the
+   machine it was built on.)
+3. In a Claude Code session, invoke a pipeline entry point by name — see below.
+
+## Using the pipeline
+
+Three entry points, one per kind of work. Type the skill name (or ask Claude to invoke
+it) to start:
+
+| You want to... | Invoke |
+| --- | --- |
+| Build something new | `sdlc-new-feature` |
+| Fix a bug, sized enough to want a paper trail | `sdlc-fix` |
+| Redesign an existing page/screen | `sdlc-redesign` |
+
+Each one just captures your request, gives it a short slug, and hands off to
+`sdlc-pipeline`, which:
+
+1. **Sizes the effort** — trivial, small, standard, or large — and tells you which
+   phases it's about to run before running any of them.
+2. **Runs each phase** by delegating to the skill that already owns it (discovery,
+   research, design, planning/architecture, implementation, review, shipping — the full
+   map is in [SDLC phase mapping](#sdlc-phase-mapping)).
+3. **Stops after every phase** and shows you what it produced. You get three choices:
+   **Approve** (move on), **Revise** (stay here, adjust), or **Skip remaining phases**
+   (ship what exists now). Nothing advances without your say-so.
+4. **Tracks the run** in `docs/pipeline/<slug>.md` in the project you're working in —
+   what ran, what got approved, what artifact each phase produced and where it lives.
+5. **Escalates security review automatically** the moment a diff touches auth, secrets,
+   or a database schema, no matter how small the change was classified.
+
+Large, fuzzy-scoped efforts don't go straight into the pipeline — they're charted first
+with `wayfinder` into a map of decision tickets, and each resolved ticket re-enters the
+pipeline on its own.
+
+**A worked example:** you invoke `sdlc-new-feature` with "add a saved-searches feature
+to the app." The pipeline classifies it `standard`, runs Discovery (a grilled brief),
+gates. You approve. It runs Research, gates. You approve. It runs Design — pulling style
+data, drafting a direction, generating concept images for you to react to before any
+code exists — gates. You pick a direction. It runs Plan (a spec, then tickets), gates.
+Implementation happens test-first. QA runs the anti-slop guardrails plus a live-browser
+accessibility pass. Ship handles merge conflicts and any manual steps. You approved
+seven times; you didn't do any of the work in between.
+
+### Using a skill directly instead
+
+The pipeline is for effort worth a full gated trail. For anything lighter — a quick
+debug, a one-off style tweak, a spec written from a conversation you already had —
+call the underlying skill directly (`diagnosing-bugs`, `frontend-design`, `to-spec`,
+...). The entry points are deliberately **not** auto-triggering, specifically so they
+never compete with those skills for the same request — see
+[Composition notes](#composition-notes).
+
+## Skills — what's here and where it came from
+
+Skills here are the source of truth; nothing in this section is installed verbatim from
+upstream — everything vendored was read, adapted to compose with what's already here,
+and is expected to keep changing. Where a skill's own upstream license is stricter than
+"personal use, adapted" (none checked here beyond what's linked), re-verify before
+reusing this repo outside personal use.
+
+**Authored here:**
 - `discovery-ideation` — frames a raw idea/problem into a grilled, written brief
+- `sdlc-pipeline`, `sdlc-new-feature`, `sdlc-fix`, `sdlc-redesign` — the shared
+  orchestration engine and its three entry points (see [Using the pipeline](#using-the-pipeline))
 
-Vendored from [benjaminstelzer/scoville-*](https://github.com/benjaminstelzer):
+**Vendored from [benjaminstelzer/scoville-*](https://github.com/benjaminstelzer):**
 - `scoville-research` — evidence-first research; extended with background-agent
   delegation + saved-markdown-file persistence for lighter (non-Deep) runs
 - `scoville-code-anti-ai-slop` — goal-first guardrail for planning/changing/testing/
@@ -21,111 +134,64 @@ Vendored from [benjaminstelzer/scoville-*](https://github.com/benjaminstelzer):
   diff-review mechanism as `references/review.md`, invoked for the review outcome
 - `scoville-ui-anti-ai-slop` — framework-aware guardrail for UI implementation/audit
 
-Vendored from [bendrape1-byte/silk-design](https://github.com/bendrape1-byte/silk-design):
-- `silk-design` — motion/polish-by-default web UI building (design branch)
+**Vendored from [bendrape1-byte/silk-design](https://github.com/bendrape1-byte/silk-design):**
+- `silk-design` — motion/polish-by-default web UI building
 
-Vendored from [anthropics/claude-code](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md):
-- `frontend-design` — aesthetic direction, typography, and non-templated visual
-  design choices (design branch)
+**Vendored from [anthropics/claude-code](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md):**
+- `frontend-design` — aesthetic direction, typography, and non-templated visual design
+  choices; heavily extended here (see the `taste-skill` entry below)
 
-Vendored from Matt Pocock's skills plugin:
+**Vendored from Matt Pocock's skills plugin:**
 - `grilling`, `tdd`, `codebase-design`, `domain-modeling`, `diagnosing-bugs`,
   `prototype`, `resolving-merge-conflicts`, `wizard`, `writing-for-agents`
 - `wayfinder` — plans an effort too big for one session as a map of decision
-  tickets on the issue tracker; bridges discovery-ideation and code architecture.
-  User-invoked only (no auto-trigger).
-- `code-review` was folded into `scoville-code-anti-ai-slop` (see above) rather
-  than kept standalone — both fired on "review" requests at different altitudes
-  (mechanism vs. discipline), so the mechanism now lives as a reference the
-  guardrail skill loads for that outcome.
+  tickets on the issue tracker; bridges discovery-ideation and code architecture
+- `code-review` — folded into `scoville-code-anti-ai-slop` rather than kept standalone
+  (see [Composition notes](#composition-notes))
 - `improve-codebase-architecture` — scans a codebase for deepening opportunities,
-  presents an HTML report, grills through whichever one you pick. Fills the
-  code-architecture gap `codebase-design`/`domain-modeling` only gave vocabulary
-  for.
-- `to-spec` — synthesizes the current conversation into a spec, publishes to the
-  issue tracker. No interview; pure synthesis of what's already been discussed.
+  presents an HTML report, grills through whichever one you pick
+- `to-spec` — synthesizes the current conversation into a spec, publishes to the issue
+  tracker (no interview, pure synthesis of what's already been discussed)
 - `to-tickets` — breaks a plan/spec/conversation into tracer-bullet tickets with
-  blocking edges, published to the tracker.
-- `implement` — implements a piece of work from a spec or ticket set. Consumes
-  `to-spec`/`to-tickets` output directly.
-- `handoff` — compacts the current conversation into a handoff document for
-  another agent to pick up. Connective tissue between phase-agents.
+  blocking edges, published to the tracker
+- `implement` — implements a piece of work from a spec or ticket set
+- `handoff` — compacts the current conversation into a handoff document for another
+  agent to pick up
 
-All five above are user-invoked only (`disable-model-invocation: true`).
-
-Vendored from [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)
-(skipped its `design`/`brand`/`banner-design`/`slides` skills as redundant with or
-out of scope of what's already here):
+**Vendored from [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)**
+(skipped its `design`/`brand`/`banner-design`/`slides` skills as redundant with or out
+of scope of what's already here):
 - `ui-ux-pro-max` — queryable design-intelligence database (styles, palette/reasoning
   profiles, font pairings, UX guidelines, GSAP presets, chart types, stacks) via a
-  `scripts/search.py` CLI. Feeds `frontend-design` with data rather than opinion —
-  see the `design-plan` command pattern in `agents/design-review-refs/commands/`.
+  `scripts/search.py` CLI
 - `design-system` — three-layer token architecture (primitive→semantic→component) +
-  component specs; bridges Design → Code architecture more concretely than
-  `codebase-design`/`domain-modeling` alone.
-- `ui-styling` — shadcn/ui + Radix + Tailwind, accessible components, dark mode.
-  Implementation-phase skill; gives accessible defaults up front instead of catching
-  violations later in audit.
+  component specs
+- `ui-styling` — shadcn/ui + Radix + Tailwind, accessible components, dark mode
+- `design-review` agent — see [Agents](#agents)
 
-Also brought over a ready-made agent (see Agents below): `design-review`.
-
-Vendored from [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) (skipped
-`brutalist-skill`/`minimalist-skill`/`soft-skill` as redundant with `ui-ux-pro-max`'s
-style catalog, `brandkit`/`stitch-skill` as out of scope, `image-to-code-skill` as
-Codex-specific, and `output-skill` as redundant with `scoville-code-anti-ai-slop`'s
-completeness rules). Its flagship `taste-skill/SKILL.md` covered nearly the same mission
-as `frontend-design` — anti-slop, read-the-brief, no templated defaults — at the *same*
-altitude, so rather than vendor it as a second skill competing for the same trigger, its
-concrete mechanisms were folded into `frontend-design` as new reference files:
-- `frontend-design/references/ai-tells.md` — forbidden AI-tell patterns (the em-dash ban,
-  "Jane Doe" placeholder content, div-based fake screenshots, eyebrow overuse, and more)
-- `frontend-design/references/dials-and-layout.md` — the three dials
-  (`DESIGN_VARIANCE`/`MOTION_INTENSITY`/`VISUAL_DENSITY`), hard layout rules, content
-  density rules, and the dark-mode protocol
+**Vendored from [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill)**
+(skipped `brutalist-skill`/`minimalist-skill`/`soft-skill` as redundant with
+`ui-ux-pro-max`'s style catalog, `brandkit`/`stitch-skill` as out of scope,
+`image-to-code-skill` as Codex-specific, `output-skill` as redundant with
+`scoville-code-anti-ai-slop`). Its flagship skill covered nearly the same ground as
+`frontend-design` at the *same* altitude, so rather than vendor a second competing
+skill, its mechanisms were folded into `frontend-design` as reference files:
+- `frontend-design/references/ai-tells.md` — forbidden AI-tell patterns
+- `frontend-design/references/dials-and-layout.md` — the three design dials, hard
+  layout rules, content density rules, dark-mode protocol
 - `frontend-design/references/design-system-appendix.md` — real install commands and
-  canonical docs for Material/Fluent/Carbon/shadcn/GOV.UK/etc., so a design-system choice
-  is grounded rather than guessed
+  canonical docs for common design systems
 
-Two genuinely new skills came over standalone, since they don't overlap anything already
-here:
-- `redesign-skill` — audits an existing site, identifies generic AI patterns, upgrades to
-  premium quality without breaking functionality. Nothing else covers the
-  audit-existing-site workflow.
+**Standalone, nothing else here overlaps them:**
+- `redesign-skill` — audits an existing site, identifies generic AI patterns, upgrades
+  to premium quality without breaking functionality (from Leonxlnx/taste-skill)
 - `imagegen-frontend-web` / `imagegen-frontend-mobile` — generate per-section/per-screen
-  concept images *before* code is written, for the user to react to. Fills the "prototype
-  before the design is agreed" need with visual concepts, complementing `prototype`
-  (Matt Pocock, code-based prototyping).
+  concept images *before* code is written (from Leonxlnx/taste-skill)
 
-Renaming/redefining any of the above to fit personal workflow is expected and fine —
+Renaming/redefining any of the above to fit your own workflow is expected and fine —
 this repo is meant to be edited, not just mirrored from upstream.
 
-## The pipeline: `sdlc-pipeline` + entry points
-
-`sdlc-pipeline` is the shared orchestration engine, modelled on affaan-m/ECC's
-`orch-pipeline` family but with every phase transition gated on user approval instead
-of ECC's two-gate (after Plan, before Commit) minimalism — reduced supervision is
-earned per phase as it proves reliable, not assumed. It classifies request size
-(trivial/small/standard/large), decides which phases apply, delegates each one to the
-skill that already owns it (see the phase mapping table above), tracks the run as a
-manifest at `docs/pipeline/<slug>.md`, and auto-escalates `security-review` whenever a
-diff touches auth/secrets/DB regardless of size.
-
-Three thin entry points sit on top of it — `sdlc-new-feature`, `sdlc-fix`,
-`sdlc-redesign` — each just captures the raw request, derives a slug, and invokes
-`sdlc-pipeline` with a `kind`. All four (the engine and the three entry points) are
-`disable-model-invocation: true`. That's deliberate, not an oversight: `diagnosing-bugs`
-already owns "debug this," `redesign-skill` already owns "redesign this page," and
-`discovery-ideation` already owns raw feature ideation — a model-invoked pipeline
-sitting on top would compete with all three for the same triggers, which is exactly
-what the composition rule below exists to prevent. Reach for an `sdlc-*` skill by name
-when the work is worth the full gated trail; the underlying skills remain reachable
-directly for anything lighter.
-
-Large efforts (ambiguous scope, more than one session) route through `wayfinder`
-first rather than through the pipeline directly — each resulting decision ticket
-re-enters the pipeline on its own once resolved.
-
-## SDLC phase mapping (in progress)
+## SDLC phase mapping
 
 | Phase | Skills |
 | --- | --- |
@@ -145,36 +211,31 @@ keeping as-is:
 
 - `design-review` — live-browser UI reviewer: screenshots each viewport tier, checks
   WCAG 2.1 AA, runs a 7-phase review, returns ranked findings (Blockers → Nitpicks).
-  `scoville-ui-anti-ai-slop/references/validation.md` now points to it as the
-  mechanism for a full multi-viewport audit, so the two don't compete — the
-  guardrail skill still owns what counts as sufficient evidence, this agent owns
-  driving the browser. Reference commands (`design-plan`, `design-review`) and its
-  heuristic fallback script (`design-audit.mjs`, used only if browsing fails) live
-  in `agents/design-review-refs/`.
-  Drives the browser directly via `mcp__claude-in-chrome__*` rather than
-  `mcp__playwright`/`mcp__chrome-devtools` — neither MCP server is installed in this
-  environment, but `claude-in-chrome` is. (An earlier pass wired this through
-  gstack's `browse` skill instead, on the strength of a since-removed CLAUDE.md line
-  that mandated `browse` for all web automation; that mandate is gone, so the agent
-  was rewired back to the direct tool.)
+  `scoville-ui-anti-ai-slop/references/validation.md` points to it as the mechanism for
+  a full multi-viewport audit, so the two don't compete — the guardrail skill owns what
+  counts as sufficient evidence, this agent owns driving the browser. Reference commands
+  (`design-plan`, `design-review`) and its heuristic fallback script
+  (`design-audit.mjs`, used only if browsing fails) live in `agents/design-review-refs/`.
+  Drives the browser via `mcp__claude-in-chrome__*` — swap this for whatever browser
+  automation MCP is actually installed in your environment if it differs.
 
 ## Composition notes
 
 Every skill here is meant to be complementary, not competing — each owns one altitude
 (data, judgment, execution, audit) so two skills never fight over the same trigger.
 Where two are adjacent enough to be confused, the boundary is written down explicitly
-rather than left implicit:
+rather than left implicit.
 
-The design pipeline (`ui-ux-pro-max`, `frontend-design`, `silk-design`,
-`design-system`, `scoville-ui-anti-ai-slop`, `design-review`) all fire on "build/fix
-UI" but aren't redundant — they compose in order:
+**The design chain** (`ui-ux-pro-max`, `frontend-design`, `silk-design`,
+`design-system`, `scoville-ui-anti-ai-slop`, `design-review`) all fire on "build/fix UI"
+but aren't redundant — they compose in order:
 
 1. `ui-ux-pro-max` supplies research data: styles, palette/reasoning profiles, font
    pairings, UX guidelines, relevant stack conventions
 2. `frontend-design` decides the aesthetic direction on top of that data (palette,
    type, layout, copy) — after drafting the token system it checkpoints with the user
    against [skillsui.app/skills](https://www.skillsui.app/skills) as a second opinion,
-   sets the three dials, and self-critiques against the AI-tells list before shipping
+   sets three numeric dials, and self-critiques against the AI-tells list before shipping
 3. `imagegen-frontend-web`/`imagegen-frontend-mobile` turn that direction into
    pre-code concept images the user can react to before anything is built
 4. `silk-design` executes the agreed direction with concrete motion/craft recipes;
@@ -183,10 +244,18 @@ UI" but aren't redundant — they compose in order:
    accessibility, responsiveness, usability); `design-review` is the live-browser
    mechanism it dispatches for a full multi-viewport WCAG pass
 
-`redesign-skill` runs this same pipeline in reverse-gear for an existing site: audit
+`redesign-skill` runs this same chain in reverse-gear for an existing site: audit
 first, then apply the same direction/craft/audit steps without breaking functionality.
 
-Kept as separate skills rather than merged — collapsing them would mix data,
+**The pipeline layer** (`sdlc-pipeline` + `sdlc-new-feature`/`sdlc-fix`/`sdlc-redesign`)
+is deliberately **not** model-invoked, even though it would be convenient to have it
+fire automatically on "let's build X." `diagnosing-bugs` already owns "debug this,"
+`redesign-skill` already owns "redesign this page," and `discovery-ideation` already
+owns raw feature ideation — an auto-firing pipeline on top would compete with all three
+for the same triggers. You reach for `sdlc-*` by name when the work is worth the full
+gated trail; the underlying skills stay reachable directly for anything lighter.
+
+Kept as separate skills rather than merged throughout — collapsing them would mix data,
 judgment, implementation, and audit into one file, which is exactly what "kept
 complementary" is meant to prevent.
 
