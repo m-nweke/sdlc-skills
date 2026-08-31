@@ -234,20 +234,26 @@ whole design exists to avoid.
 ### Regenerating candidates
 
 **Regenerate** is a fourth option at the prototype gate, alongside the candidates themselves: the
-user didn't like any of them and wants another round, same brief. Track a **regeneration count**
-for the phase in the run manifest (start at 0, increment on each Regenerate). Spawn Agent 1 again
-with the same grounding but explicitly told which candidates were rejected, so it doesn't just
-reproduce them.
+user didn't like any of them and wants another round. It's never a blind retry — picking
+Regenerate immediately opens a **second `AskUserQuestion`, multi-select**, per candidate that was
+in this round: what didn't work about it. Options drawn from what's actually visible in the
+prototype (palette/color, typography, layout/composition, density/spacing, motion/tone, "doesn't
+feel like this app," "too close to the current design" for a redesign, ...) plus the tool's
+built-in Other for anything not on the list. Track a **regeneration count** for the phase in the
+run manifest (start at 0, increment on each Regenerate). Spawn Agent 1 again with the same
+grounding, told explicitly which candidates were rejected and the selected reasons for each —
+never just "try again," always "here's what was wrong and with which one."
 
-**On the 3rd regeneration, don't spawn another blind round.** Three rejected rounds at the same
-brief is a signal the brief itself is too broad for candidate generation to converge on its own —
-narrowing it is the fix, not a fourth guess. Before spawning again, ask through `AskUserQuestion`:
-a concrete reference (a named site/app/style to anchor to), what specifically was wrong across
-all rounds so far (too safe, too loud, wrong era, wrong density — whichever applies), or narrow to
-iterating on the closest candidate from a prior round instead of starting fresh. Feed the answer
-into the next prototype agent's prompt as an explicit constraint, and reset the regeneration count
-once a narrower direction is in hand — the count tracks unproductive *blind* rounds, not total
-attempts.
+**On the 3rd regeneration, don't spawn another round on multi-select feedback alone.** Structured
+per-round feedback narrows things, but three rounds still not converging is a signal the brief
+itself is too broad — narrowing *that* is the fix, not a fourth guess. Before spawning again, ask
+through `AskUserQuestion`: a concrete reference (a named site/app/style to anchor to), what's been
+wrong across *every* round so far taken together (a pattern the per-round multi-selects should
+already suggest — surface it back to the user rather than asking them to re-derive it), or narrow
+to iterating on the closest candidate from a prior round instead of starting fresh. Feed the
+answer into the next prototype agent's prompt as an explicit constraint, and reset the
+regeneration count once a narrower direction is in hand — the count tracks rounds that didn't
+converge, not total attempts.
 
 ## 5. Security auto-escalation
 

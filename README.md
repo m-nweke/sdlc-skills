@@ -292,9 +292,12 @@ but aren't redundant — they compose in order:
    specialty — where a static concept image is genuinely the better format.
 4. **The pipeline gates here**, through `AskUserQuestion`, before any real code exists —
    alignment on a direction happens against the coded prototype, not a described plan. Beside
-   the candidates, **Regenerate** is always an option; after 3 unproductive regenerations the
-   pipeline stops guessing blind and asks for a narrower brief (a reference to anchor to, what
-   was wrong across every round) before trying again
+   the candidates, **Regenerate** is always an option, and picking it opens a multi-select
+   follow-up — what didn't work about each rejected candidate (palette, typography, layout,
+   density, motion, "doesn't feel like this app," ...) — so the next round always carries real
+   feedback, never a blind retry. After 3 rounds that still haven't converged, the pipeline
+   stops guessing and asks for a narrower brief (a reference to anchor to, the pattern across
+   every round) before trying again
 5. Only now does `frontend-design` decide the full aesthetic direction and build it
    (palette, type, layout, copy) for the *already-chosen* concept — its own internal
    checkpoint against [skillsui.app/skills](https://www.skillsui.app/skills) is a second
