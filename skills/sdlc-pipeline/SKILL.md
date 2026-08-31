@@ -330,6 +330,17 @@ overrun this whole design exists to avoid.
    format" above), each populated with realistic mock data for the real screen(s) in scope,
    tokens varying or fixed per the answer to the question above. It reports back the artifact
    path and a one-line description of each candidate.
+   **Palette/type is the easiest axis to vary and the least convincing one on its own — the
+   prompt must require the 3 candidates to differ in layout/composition too**, not just theme
+   variables: information architecture (what's grouped, what's emphasized first), grid/structure
+   (single-column vs. multi-column vs. card-grid vs. table), density (spacious vs. compact),
+   navigation placement (sidebar vs. top bar vs. tabs), and component choices for the same data
+   (e.g. a stat as a card vs. inline in a list vs. a chart). At least two of these structural axes
+   must differ between every pair of candidates, independent of whichever tokens question answer
+   applies — "reuse current tokens" constrains palette/type, never layout. Before reporting back,
+   the prototype agent should sanity-check its own output against this: if it could turn candidate
+   A into candidate B by only editing CSS variables, it hasn't met the bar and should revise one of
+   them before returning.
 2. **Gate here**, before any real code exists: present the artifact and get the user's pick
    through `AskUserQuestion` (per this repo's question-UI convention) — options are the
    candidates themselves, plus **Regenerate** (see "Regenerating candidates" below) — before
@@ -345,9 +356,10 @@ overrun this whole design exists to avoid.
    **Diagnose** steps only (audit the existing site's real screens and content, list what's
    generic/weak — stop before **Fix**, don't apply anything), then build one self-contained HTML
    artifact with a tab/switcher between 3 distinct upgrade directions (per "Prototype format,"
-   "Ground every candidate," and the tokens question above), informed by its own diagnosis. It
-   reports back the artifact path, the diagnosis summary, and a one-line description of each
-   candidate.
+   "Ground every candidate," the tokens question above, and the layout/composition bar in the
+   Forward flow's Agent 1 step — palette alone never satisfies "distinct" here either), informed
+   by its own diagnosis. It reports back the artifact path, the diagnosis summary, and a one-line
+   description of each candidate.
 2. **Gate here**: present the artifact, get the user's pick through `AskUserQuestion` — options
    are the candidates themselves, plus **Regenerate** (see "Regenerating candidates" below).
 3. **Spawn Agent 2 — fix.** Prompt it with the chosen candidate's description, the diagnosis
