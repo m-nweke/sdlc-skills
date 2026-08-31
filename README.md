@@ -99,9 +99,11 @@ pipeline on its own.
 **A worked example:** you invoke `sdlc-new-feature` with "add a saved-searches feature
 to the app." The pipeline classifies it `standard`, runs Discovery (a grilled brief),
 gates. You approve. It runs Research, gates. You approve. It runs Design — pulling style
-data, drafting a direction, generating concept images for you to react to before any
-code exists — gates. You pick a direction. It runs Plan (a spec, then tickets), gates.
-Implementation happens test-first. QA runs the anti-slop guardrails plus a live-browser
+data, proposing 2-3 distinct candidate directions, generating concept images for each so
+there's something real to react to before any code exists — gates on your pick. Only then
+does it draft the full token system and build against the direction you chose. It runs
+Plan (a spec, then tickets), gates. Implementation happens test-first. QA runs the
+anti-slop guardrails plus a live-browser
 accessibility pass. Ship handles merge conflicts and any manual steps. You approved
 seven times; you didn't do any of the work in between.
 
@@ -205,7 +207,7 @@ this repo is meant to be edited, not just mirrored from upstream.
 | --- | --- |
 | Discovery & Ideation | `discovery-ideation`, `grilling`, `wayfinder` (for oversized efforts) |
 | Research | `scoville-research`, `ui-ux-pro-max` (design-data lookups). For hardening, this is where current security/architecture best practices for the stack get gathered. |
-| Design | `ui-ux-pro-max` (data) → `frontend-design` (direction) → `imagegen-frontend-web`/`imagegen-frontend-mobile` (pre-code visual prototypes) → `silk-design` (craft) → `design-system` (tokens/component specs); `redesign-skill` for existing sites |
+| Design | `ui-ux-pro-max` (data, 2-3 candidate directions) → `imagegen-frontend-web`/`imagegen-frontend-mobile` (pre-code concept images per candidate) → **gate on a pick** → `frontend-design` (build the chosen direction) → `silk-design` (craft) → `design-system` (tokens/component specs); `redesign-skill` for existing sites, same prototype-before-fix order |
 | Code architecture | `codebase-design`, `domain-modeling`, `improve-codebase-architecture` (fed by Research's findings when hardening), `wayfinder`, `to-spec`, `to-tickets` |
 | Implementation | `tdd`, `prototype`, `implement`, `ui-styling`, `scoville-code-anti-ai-slop` |
 | QA | `scoville-code-anti-ai-slop` (review outcome), `diagnosing-bugs`, `scoville-ui-anti-ai-slop` (discipline) + `design-review` agent (live-browser mechanism); `security-review` (mandatory when hardening, auto-escalated otherwise on auth/secrets/DB diffs) |
@@ -252,22 +254,32 @@ the start rather than needing a retrofit.
 `design-system`, `scoville-ui-anti-ai-slop`, `design-review`) all fire on "build/fix UI"
 but aren't redundant — they compose in order:
 
-1. `ui-ux-pro-max` supplies research data: styles, palette/reasoning profiles, font
-   pairings, UX guidelines, relevant stack conventions
-2. `frontend-design` decides the aesthetic direction on top of that data (palette,
-   type, layout, copy) — after drafting the token system it checkpoints with the user
-   against [skillsui.app/skills](https://www.skillsui.app/skills) as a second opinion,
-   sets three numeric dials, and self-critiques against the AI-tells list before shipping
-3. `imagegen-frontend-web`/`imagegen-frontend-mobile` turn that direction into
-   pre-code concept images the user can react to before anything is built
-4. `silk-design` executes the agreed direction with concrete motion/craft recipes;
+1. `ui-ux-pro-max` supplies research data — styles, palette/reasoning profiles, font
+   pairings, UX guidelines, relevant stack conventions — and from it proposes 2-3
+   genuinely distinct candidate directions, not one
+2. `imagegen-frontend-web`/`imagegen-frontend-mobile` turn each candidate into concept
+   images (scoped to the key screens, not a full page) so there's something real to
+   react to
+3. **The pipeline gates here**, through `AskUserQuestion`, before any code exists —
+   alignment on a direction happens against pictures, not a described plan
+4. Only now does `frontend-design` decide the full aesthetic direction and build it
+   (palette, type, layout, copy) for the *already-chosen* concept — its own internal
+   checkpoint against [skillsui.app/skills](https://www.skillsui.app/skills) is a second
+   opinion on that choice, not the first alignment moment; it still sets its three
+   numeric dials and self-critiques against the AI-tells list before shipping
+5. `silk-design` executes the agreed direction with concrete motion/craft recipes;
    `design-system` formalizes the result into three-layer tokens and component specs
-5. `scoville-ui-anti-ai-slop` is the standing audit discipline (hierarchy,
+6. `scoville-ui-anti-ai-slop` is the standing audit discipline (hierarchy,
    accessibility, responsiveness, usability); `design-review` is the live-browser
    mechanism it dispatches for a full multi-viewport WCAG pass
 
-`redesign-skill` runs this same chain in reverse-gear for an existing site: audit
-first, then apply the same direction/craft/audit steps without breaking functionality.
+`redesign-skill` runs this same chain in reverse-gear for an existing site: its own
+**Scan**/**Diagnose** steps audit first, `imagegen-frontend-web`/`imagegen-frontend-mobile`
+turn the diagnosis into 2-3 candidate upgrade directions, the pipeline gates on a pick,
+then redesign-skill's **Fix** step applies it — never audit-straight-to-fix inside the
+pipeline, even though the skill is capable of that in one pass standalone. The full
+sequencing for both directions lives in `sdlc-pipeline`'s "prototypes before direction"
+section, not duplicated here.
 
 **Every skill in this repo is model-invoked — nothing sets `disable-model-invocation`.**
 That's a deliberate, repo-wide policy, not just a fix for one broken chain: a skill

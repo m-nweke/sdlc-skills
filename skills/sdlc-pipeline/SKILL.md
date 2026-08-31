@@ -104,11 +104,45 @@ For each phase your size classification includes, in order:
 | --- | --- |
 | Discovery | `discovery-ideation`. Skipped entirely for `kind: harden` — there's no idea to frame, the ask is already well-formed. |
 | Research | `scoville-research`; `ui-ux-pro-max` for design-data lookups. For `kind: harden`, this is where the "industry best practices" get gathered: security hardening checklists (OWASP ASVS/Top 10, CIS benchmarks), and architecture/resilience patterns for the project's actual stack and domain — not generic advice. |
-| Design (if UI-facing) | `ui-ux-pro-max` → `frontend-design` → `imagegen-frontend-web`/`imagegen-frontend-mobile` → `silk-design` → `design-system`. For `kind: redesign`, use `redesign-skill` instead, which runs this same pipeline in reverse against the existing site. Skipped for `kind: harden` unless the hardening work itself touches UI (e.g. an auth flow's UX). |
+| Design (if UI-facing) | See **The Design phase: prototypes before direction** below — never skip straight to `frontend-design`/`redesign-skill` building real code. Skipped entirely for `kind: harden` unless the hardening work itself touches UI (e.g. an auth flow's UX). |
 | Plan / Architecture | `to-spec`, `codebase-design`, `domain-modeling`, `improve-codebase-architecture` (only if it surfaces real friction), `to-tickets` (standard/large sizes only). For `kind: harden`, run `improve-codebase-architecture` first — feed it the Research phase's findings so the deepening opportunities it surfaces are audited against the researched practices, not just general "shallow module" heuristics — then `to-spec` the target architecture before `to-tickets`. |
 | Implement (TDD) | `tdd`, `implement`, plus `ui-styling`/`silk-design`/`frontend-design` if the work touches UI. For `kind: fix`, start with `diagnosing-bugs` before implementing. |
 | Review / QA | `scoville-code-anti-ai-slop` (review outcome); `scoville-ui-anti-ai-slop` + the `design-review` agent if UI was touched; `security-review` if step 5 below applies. For `kind: harden`, `security-review` is mandatory at every size, not conditional on step 5's diff heuristic. |
 | Ship | `resolving-merge-conflicts` (if conflicts exist), `wizard` (if manual infra steps remain), `handoff` (if the session ends before Ship completes) |
+
+### The Design phase: prototypes before direction
+
+**No design phase writes real code, or commits to a direction, before the user has seen and
+aligned on candidate concepts.** `frontend-design` and `redesign-skill` are both capable of
+deciding a direction and building it in the same pass if you invoke them directly — that's fine
+for a standalone ad-hoc request, but inside this pipeline it would silently defeat the whole
+"prototype before you decide" premise the Design phase exists for. Sequence it explicitly:
+
+**Forward (`kind: feature`, or `harden` if it touches UI):**
+1. `ui-ux-pro-max` gathers data — styles, palette/reasoning profiles, font pairings, UX
+   guidelines — and from it proposes **2-3 genuinely distinct candidate directions** for the
+   brief, not one. "Distinct" means a different aesthetic category each (e.g. warm-editorial vs.
+   dark-luxury vs. neobrutalist), not three palette variations on the same idea.
+2. `imagegen-frontend-web`/`imagegen-frontend-mobile` generates concept images for each
+   candidate — scope this to the key screen(s), not a full multi-section page, so three
+   directions stays cheap to produce and cheap to compare.
+3. **Gate here**, before `frontend-design` touches any code: present the candidates through
+   `AskUserQuestion` (per this repo's question-UI convention) and get the user's pick, or a
+   steer toward a fourth direction, before anything else runs.
+4. Only now does `frontend-design` run — building out the token system and real implementation
+   for the *already-chosen* direction. Its own internal skillsui.app checkpoint still applies as
+   a second opinion on the chosen direction, not as the first alignment moment.
+5. `silk-design` executes craft/motion; `design-system` formalizes tokens and component specs.
+
+**Reverse (`kind: redesign`):**
+1. `redesign-skill`'s **Scan** and **Diagnose** steps only — audit the existing site and list
+   what's generic/weak. Stop before its **Fix** step; don't apply anything yet.
+2. `imagegen-frontend-web`/`imagegen-frontend-mobile` generates concept images for 2-3 distinct
+   upgrade directions, informed by the diagnosis, scoped to the key screen(s) being redesigned.
+3. **Gate here**: present the candidates through `AskUserQuestion`, get the user's pick.
+4. `redesign-skill`'s **Fix** step now applies the chosen direction against the existing stack.
+5. `silk-design` and `design-system` as above, if the redesign's scope warrants formalizing
+   tokens rather than just landing the fix.
 
 ## 5. Security auto-escalation
 
