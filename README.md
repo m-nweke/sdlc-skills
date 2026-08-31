@@ -291,7 +291,10 @@ but aren't redundant — they compose in order:
    `imagegen-frontend-mobile` stays reserved for marketing/landing pages — its documented
    specialty — where a static concept image is genuinely the better format.
 4. **The pipeline gates here**, through `AskUserQuestion`, before any real code exists —
-   alignment on a direction happens against the coded prototype, not a described plan
+   alignment on a direction happens against the coded prototype, not a described plan. Beside
+   the candidates, **Regenerate** is always an option; after 3 unproductive regenerations the
+   pipeline stops guessing blind and asks for a narrower brief (a reference to anchor to, what
+   was wrong across every round) before trying again
 5. Only now does `frontend-design` decide the full aesthetic direction and build it
    (palette, type, layout, copy) for the *already-chosen* concept — its own internal
    checkpoint against [skillsui.app/skills](https://www.skillsui.app/skills) is a second

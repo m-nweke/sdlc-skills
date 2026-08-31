@@ -93,6 +93,10 @@ Create (or append to, if `docs/pipeline/<slug>.md` already exists) a run manifes
 | ... | | | | |
 ```
 
+For the Design phase, record regenerations in the **Gate decision** cell as they happen (e.g.
+"Regenerated ×2, then Approved candidate B") rather than a separate column — it's the one phase
+whose gate can loop, and the manifest should show that history plainly.
+
 This file is the pipeline's own state — the phase artifacts it links to (briefs, specs,
 tickets, design tokens) already have their own home per the skill that produces them; don't
 duplicate their content here, only track that they exist, which agent(s) produced them, and
@@ -203,8 +207,9 @@ whole design exists to avoid.
    tokens varying or fixed per the answer to the question above. It reports back the artifact
    path and a one-line description of each candidate.
 2. **Gate here**, before any real code exists: present the artifact and get the user's pick
-   through `AskUserQuestion` (per this repo's question-UI convention), or a steer toward a
-   different direction, before spawning the next agent.
+   through `AskUserQuestion` (per this repo's question-UI convention) — options are the
+   candidates themselves, plus **Regenerate** (see "Regenerating candidates" below) — before
+   spawning the next agent.
 3. **Spawn Agent 2 — build.** Prompt it with the chosen candidate's description and the
    prototype artifact's path, to run `frontend-design` and build the token system and real
    implementation for that *already-chosen* direction (its own internal skillsui.app checkpoint
@@ -219,11 +224,30 @@ whole design exists to avoid.
    "Ground every candidate," and the tokens question above), informed by its own diagnosis. It
    reports back the artifact path, the diagnosis summary, and a one-line description of each
    candidate.
-2. **Gate here**: present the artifact, get the user's pick through `AskUserQuestion`.
+2. **Gate here**: present the artifact, get the user's pick through `AskUserQuestion` — options
+   are the candidates themselves, plus **Regenerate** (see "Regenerating candidates" below).
 3. **Spawn Agent 2 — fix.** Prompt it with the chosen candidate's description, the diagnosis
    summary, and the prototype artifact's path, to run `redesign-skill`'s **Fix** step against the
    existing stack, then `silk-design`/`design-system` if the redesign's scope warrants
    formalizing tokens rather than just landing the fix.
+
+### Regenerating candidates
+
+**Regenerate** is a fourth option at the prototype gate, alongside the candidates themselves: the
+user didn't like any of them and wants another round, same brief. Track a **regeneration count**
+for the phase in the run manifest (start at 0, increment on each Regenerate). Spawn Agent 1 again
+with the same grounding but explicitly told which candidates were rejected, so it doesn't just
+reproduce them.
+
+**On the 3rd regeneration, don't spawn another blind round.** Three rejected rounds at the same
+brief is a signal the brief itself is too broad for candidate generation to converge on its own —
+narrowing it is the fix, not a fourth guess. Before spawning again, ask through `AskUserQuestion`:
+a concrete reference (a named site/app/style to anchor to), what specifically was wrong across
+all rounds so far (too safe, too loud, wrong era, wrong density — whichever applies), or narrow to
+iterating on the closest candidate from a prior round instead of starting fresh. Feed the answer
+into the next prototype agent's prompt as an explicit constraint, and reset the regeneration count
+once a narrower direction is in hand — the count tracks unproductive *blind* rounds, not total
+attempts.
 
 ## 5. Security auto-escalation
 
