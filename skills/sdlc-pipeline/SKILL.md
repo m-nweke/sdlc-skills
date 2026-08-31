@@ -5,16 +5,25 @@ description: Internal orchestration engine for the sdlc-new-feature/sdlc-fix/sdl
 
 # SDLC Pipeline
 
-The shared engine every `sdlc-*` entry point delegates into. It never does phase work itself —
-it classifies size, decides which phases apply, and hands each one to the skill that already
-owns it (see the phase table below and this repo's `README.md` for the full composition
-rationale). Its own job is the parts nothing else owns: sizing the effort, sequencing the
-phases, gating between them, and tracking the run.
+The shared engine every `sdlc-*` entry point delegates into. **You are the orchestrator, not the
+worker** — you never do phase work in your own context. You classify size, decide which phases
+apply, and for each one **spawn a fresh subagent through the Agent tool** to do the actual work
+(invoke the delegate skill(s), produce the phase's artifact, report back). Your own job is only
+the parts nothing else owns: sizing the effort, sequencing the phases, spawning and gating
+between them, and tracking the run. See the phase table below and this repo's `README.md` for
+the full composition rationale of what each phase delegates to.
 
 **Every phase transition gates on explicit user approval — no exceptions by default.** That's a
 deliberate departure from lighter shared-pipeline designs that gate only after planning and
 before commit: reduced supervision gets earned per-phase as it proves reliable, not assumed
 up front.
+
+**Every phase runs in its own spawned agent, never inline in yours.** One agent (you) starts the
+run and creates the agents needed to complete it, one phase at a time — it never does the phase
+work itself by loading a skill's instructions directly into its own context. This keeps your own
+context to just spawn prompts, short summaries, and gate decisions, so it stays small enough to
+orchestrate a long run without itself becoming the bottleneck. See **Context budget** below for
+how this composes with phases that are themselves too big for one agent.
 
 ## Inputs
 
@@ -61,10 +70,12 @@ misclassification before any phase work happens.
 
 ## 2. Large efforts: chart before you pipeline
 
-Don't run this pipeline against an effort too big to see the shape of. Invoke the Skill tool
-with `wayfinder` instead, using the request as the destination to chart. Each resulting decision
-ticket, once resolved, re-enters this pipeline on its own as a `standard` (or smaller) run —
-that's a fresh invocation with its own slug, not a loop inside this one.
+Don't run this pipeline against an effort too big to see the shape of. Spawn an agent to invoke
+`wayfinder` instead, using the request as the destination to chart — charting is itself real
+interviewing and mapping work, not orchestration bookkeeping, so it follows the same spawn rule
+as any phase. Each resulting decision ticket, once resolved, re-enters this pipeline on its own
+as a `standard` (or smaller) run — that's a fresh invocation with its own slug, not a loop
+inside this one.
 
 ## 3. Track the run
 
@@ -76,27 +87,59 @@ Create (or append to, if `docs/pipeline/<slug>.md` already exists) a run manifes
 **Kind:** <feature|fix|redesign>  **Size:** <trivial|small|standard|large>
 **Request:** <raw ask>
 
-| Phase | Status | Artifact | Gate decision |
-| --- | --- | --- | --- |
-| Discovery | done | docs/discovery/<slug>.md | Approved |
-| ... | | | |
+| Phase | Agent(s) spawned | Status | Artifact | Gate decision |
+| --- | --- | --- | --- | --- |
+| Discovery | 1 | done | docs/discovery/<slug>.md | Approved |
+| ... | | | | |
 ```
 
 This file is the pipeline's own state — the phase artifacts it links to (briefs, specs,
 tickets, design tokens) already have their own home per the skill that produces them; don't
-duplicate their content here, only track that they exist and what was decided about them.
+duplicate their content here, only track that they exist, which agent(s) produced them, and
+what was decided about them. The **Agent(s) spawned** count matters: it's how a later read of
+this file shows whether a phase stayed appropriately scoped or had to be split further.
 
-## 4. Walk the phases, gate at every transition
+## 4. Walk the phases: spawn, gate, repeat
 
 For each phase your size classification includes, in order:
 
-1. Invoke the delegate skill(s) listed for that phase in the table below, in the order given.
-2. Record the artifact path or tracker link it produced in the run manifest.
-3. Present a short summary of what the phase produced — not the full artifact, the artifact
-   *is* the detail — and gate with `AskUserQuestion`: **Approve** (advance), **Revise** (stay in
-   this phase, adjust, re-gate), or **Skip remaining phases** (jump straight to Ship with what
-   exists so far). Do not advance without an explicit Approve.
-4. Update the run manifest's gate decision before moving on.
+1. **Write a self-contained prompt** for the phase — the spawned agent starts with zero context,
+   so include: `kind`/`slug`/`request`, which delegate skill(s) to invoke (from the table below),
+   the exact artifact to produce and where to save it, and *pointers* (file paths, not pasted
+   content) to any prior phase artifacts it needs to read. Never paste a prior artifact's full
+   content into the prompt — that's exactly the accumulation this design avoids.
+2. **Spawn it with the Agent tool** — omit `subagent_type` (general-purpose) unless a named agent
+   already fits (e.g. `design-review` for a live-browser QA pass). Never use `subagent_type:
+   "fork"` for phase work — a fork inherits your full conversation context, which defeats the
+   entire point of a fresh, scoped agent.
+3. Record the artifact path or tracker link the agent reports back, and how many agents it took
+   (1, unless the phase decomposed further — see **Context budget**), in the run manifest.
+4. Present a short summary of what the phase produced — not the full artifact, the artifact
+   *is* the detail — and gate with `AskUserQuestion`: **Approve** (spawn the next phase's agent),
+   **Revise** (spawn a fresh agent to adjust this phase's artifact, re-gate), or **Skip remaining
+   phases** (jump straight to Ship with what exists so far). Do not spawn the next phase's agent
+   without an explicit Approve — the artifact must be raised and reviewed by the user before it
+   hands off.
+5. Update the run manifest's gate decision before moving on.
+
+## Context budget: spawn, don't accumulate
+
+**No agent's task — yours or a phase agent's — should need more than roughly 40% of its context
+window.** That's the reason phase work is spawned rather than run inline: an orchestrator that
+absorbed every phase's full working context (codebase exploration, draft iterations, tool output)
+would blow well past that by Ship. Two levers keep it there:
+
+- **You never absorb phase content.** Your context holds spawn prompts, the short summary each
+  agent reports back, and gate decisions — never a phase's actual working content. That's what
+  keeps *your* context small across an entire multi-phase run.
+- **A phase agent that's still too big decomposes further.** If a phase's own scope looks too
+  large for one agent before you spawn it — many tickets in Implement, a sprawling Review, a
+  large-surface codebase exploration in Plan — spawn it as a small coordinating agent whose job
+  is itself to spawn one sub-agent per ticket/seam/file-group, collect their reports, and return
+  *one* consolidated artifact and summary to you. You still only see one report either way; the
+  decomposition happens a level down. There's no tool to measure a running agent's context usage
+  directly, so judge this from scope up front (file count, ticket count, breadth of concern) —
+  a task that's "one focused thing" fits in an agent; a task that's "several of those" doesn't.
 
 ### Phase table
 
@@ -145,34 +188,42 @@ broader visual-identity change — don't default to either silently. (`redesign-
 step is where "improve without breaking functionality" constrains things again, once a direction
 is picked, regardless of which way this was answered.)
 
+This naturally splits into two spawned agents with a gate between them — the concrete example of
+**Context budget** above: the prototype work (research + N candidate mockups) and the real build
+are different-enough-sized tasks that bundling them into one agent risks exactly the overrun this
+whole design exists to avoid.
+
 **Forward (`kind: feature`, or `harden` if it touches UI):**
-1. `ui-ux-pro-max` gathers data — styles, palette/reasoning profiles, font pairings, UX
-   guidelines — and from it proposes **3 genuinely distinct candidate directions** for the
-   brief. "Distinct" means a different aesthetic category each (e.g. warm-editorial vs.
-   dark-luxury vs. neobrutalist), not palette variations on the same idea.
-2. Build one self-contained HTML artifact with a tab/switcher between the candidates (see
-   "Prototype format" above), each populated with realistic mock data for the real screen(s) in
-   scope, tokens varying or fixed per the answer above.
-3. **Gate here**, before `frontend-design` touches any code: present the artifact and get the
-   user's pick through `AskUserQuestion` (per this repo's question-UI convention), or a steer
-   toward a different direction, before anything else runs.
-4. Only now does `frontend-design` run — building out the token system and real implementation
-   for the *already-chosen* direction. Its own internal skillsui.app checkpoint still applies as
-   a second opinion on the chosen direction, not as the first alignment moment.
-5. `silk-design` executes craft/motion; `design-system` formalizes tokens and component specs.
+1. **Spawn Agent 1 — prototype.** Prompt it to run `ui-ux-pro-max` for data (styles,
+   palette/reasoning profiles, font pairings) and propose **3 genuinely distinct candidate
+   directions** for the brief ("distinct" means a different aesthetic category each — e.g.
+   warm-editorial vs. dark-luxury vs. neobrutalist — not palette variations on one idea), then
+   build one self-contained HTML artifact with a tab/switcher between them (see "Prototype
+   format" above), each populated with realistic mock data for the real screen(s) in scope,
+   tokens varying or fixed per the answer to the question above. It reports back the artifact
+   path and a one-line description of each candidate.
+2. **Gate here**, before any real code exists: present the artifact and get the user's pick
+   through `AskUserQuestion` (per this repo's question-UI convention), or a steer toward a
+   different direction, before spawning the next agent.
+3. **Spawn Agent 2 — build.** Prompt it with the chosen candidate's description and the
+   prototype artifact's path, to run `frontend-design` and build the token system and real
+   implementation for that *already-chosen* direction (its own internal skillsui.app checkpoint
+   still applies as a second opinion, not the first alignment moment), then `silk-design` for
+   craft/motion and `design-system` to formalize tokens and component specs.
 
 **Reverse (`kind: redesign`):**
-1. `redesign-skill`'s **Scan** and **Diagnose** steps only — audit the existing site's real
-   screens and content, list what's generic/weak. Stop before its **Fix** step; don't apply
-   anything yet.
-2. Build one self-contained HTML artifact with a tab/switcher between 3 distinct upgrade
-   directions (per "Prototype format," "Ground every candidate," and the tokens question above),
-   informed by the diagnosis, populated with mock data matching the real screen(s) being
-   redesigned.
-3. **Gate here**: present the artifact, get the user's pick through `AskUserQuestion`.
-4. `redesign-skill`'s **Fix** step now applies the chosen direction against the existing stack.
-5. `silk-design` and `design-system` as above, if the redesign's scope warrants formalizing
-   tokens rather than just landing the fix.
+1. **Spawn Agent 1 — audit + prototype.** Prompt it to run `redesign-skill`'s **Scan** and
+   **Diagnose** steps only (audit the existing site's real screens and content, list what's
+   generic/weak — stop before **Fix**, don't apply anything), then build one self-contained HTML
+   artifact with a tab/switcher between 3 distinct upgrade directions (per "Prototype format,"
+   "Ground every candidate," and the tokens question above), informed by its own diagnosis. It
+   reports back the artifact path, the diagnosis summary, and a one-line description of each
+   candidate.
+2. **Gate here**: present the artifact, get the user's pick through `AskUserQuestion`.
+3. **Spawn Agent 2 — fix.** Prompt it with the chosen candidate's description, the diagnosis
+   summary, and the prototype artifact's path, to run `redesign-skill`'s **Fix** step against the
+   existing stack, then `silk-design`/`design-system` if the redesign's scope warrants
+   formalizing tokens rather than just landing the fix.
 
 ## 5. Security auto-escalation
 

@@ -45,6 +45,16 @@ table, state carried as files rather than hidden context) but gated at **every**
 transition rather than just twice (after planning, before commit) — reduced supervision
 gets earned per phase as it proves reliable, not assumed up front.
 
+It also never does phase work in its own context. One agent starts a run and creates the
+agents it needs to complete it, one phase at a time, through the Agent tool — never by
+loading a phase's skill directly into the orchestrator's own conversation. Each spawned
+agent's task ends in a concrete artifact, which is raised and reviewed by you before it's
+handed to the next agent, and the orchestrator itself only ever holds spawn prompts and
+short summaries, never a phase's full working content. The goal behind that split: no
+single agent's task — orchestrator or phase — should need more than roughly 40% of its
+context window, so a phase whose own scope is too large (many tickets, a sprawling
+review) decomposes the same way one level down instead of blowing out one agent's budget.
+
 ## Quick start
 
 1. Clone this repo somewhere permanent (not a temp directory).
@@ -81,14 +91,24 @@ Each one just captures your request, gives it a short slug, and hands off to
 
 1. **Sizes the effort** — trivial, small, standard, or large — and tells you which
    phases it's about to run before running any of them.
-2. **Runs each phase** by delegating to the skill that already owns it (discovery,
-   research, design, planning/architecture, implementation, review, shipping — the full
-   map is in [SDLC phase mapping](#sdlc-phase-mapping)).
-3. **Stops after every phase** and shows you what it produced. You get three choices:
-   **Approve** (move on), **Revise** (stay here, adjust), or **Skip remaining phases**
-   (ship what exists now). Nothing advances without your say-so.
+2. **Spawns a fresh agent per phase** rather than doing the work itself — one agent
+   starts the run and creates the agents needed to complete it, one at a time, each
+   invoking the skill that owns that phase (discovery, research, design,
+   planning/architecture, implementation, review, shipping — the full map is in
+   [SDLC phase mapping](#sdlc-phase-mapping)). The orchestrating agent's own context
+   never absorbs a phase's working content, only the short summary each spawned agent
+   reports back — that's what keeps a long run from blowing out its context window. A
+   phase whose own scope is too large for one agent (many tickets in Implement, a
+   sprawling Review) decomposes the same way one level down: a small coordinating agent
+   spawns one sub-agent per ticket/seam and returns a single consolidated report.
+3. **Stops after every phase** and shows you what the spawned agent produced. You get
+   three choices: **Approve** (spawn the next phase's agent), **Revise** (spawn a fresh
+   agent to adjust this phase's artifact), or **Skip remaining phases** (ship what
+   exists now). The artifact is raised and reviewed by you before it's ever handed to
+   the next agent — nothing advances without your say-so.
 4. **Tracks the run** in `docs/pipeline/<slug>.md` in the project you're working in —
-   what ran, what got approved, what artifact each phase produced and where it lives.
+   what ran, how many agents each phase took, what got approved, what artifact each
+   phase produced and where it lives.
 5. **Escalates security review automatically** the moment a diff touches auth, secrets,
    or a database schema, no matter how small the change was classified.
 
@@ -97,18 +117,19 @@ with `wayfinder` into a map of decision tickets, and each resolved ticket re-ent
 pipeline on its own.
 
 **A worked example:** you invoke `sdlc-new-feature` with "add a saved-searches feature
-to the app." The pipeline classifies it `standard`, runs Discovery (a grilled brief),
-gates. You approve. It runs Research, gates. You approve. It runs Design — pulling style
-data, proposing 3 distinct candidate directions, asking whether they should reuse the
-app's current tokens or explore fresh ones, then building them as one coded HTML
-prototype grounded in the real feature's screens with realistic mock data (not concept
-images — those stay reserved for marketing pages) so there's something real to click
-through before any real code exists — gates on your pick. Only then does it draft the
-full token system and build against the direction you chose. It runs Plan (a spec, then
-tickets), gates. Implementation happens test-first. QA runs the
-anti-slop guardrails plus a live-browser
-accessibility pass. Ship handles merge conflicts and any manual steps. You approved
-seven times; you didn't do any of the work in between.
+to the app." The orchestrator classifies it `standard` and spawns a Discovery agent (a
+grilled brief), gates on its report. You approve. It spawns a Research agent, gates. You
+approve. It spawns a Design agent — pulling style data, proposing 3 distinct candidate
+directions, asking whether they should reuse the app's current tokens or explore fresh
+ones, then building them as one coded HTML prototype grounded in the real feature's
+screens with realistic mock data (not concept images — those stay reserved for marketing
+pages) so there's something real to click through before any real code exists — gates on
+your pick. Only then does it spawn a second Design agent to draft the full token system
+and build against the direction you chose. It spawns a Plan agent (a spec, then tickets),
+gates. Implementation happens test-first, in an agent scoped to keep its own context
+small. QA runs the anti-slop guardrails plus a live-browser accessibility pass. Ship
+handles merge conflicts and any manual steps. You approved seven times; you never held
+more than one phase's summary in view at once, and neither did the orchestrator.
 
 `sdlc-harden` follows the same gate-every-phase shape but a different phase set:
 Discovery and Design are skipped (there's no idea to frame and, usually, no visual
