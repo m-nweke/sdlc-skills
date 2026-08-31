@@ -71,6 +71,18 @@ to eventually take over some of these gates itself; the discipline above (spawn 
 record everything, decide nothing without evidence) is what makes that a safe change to
 make later instead of a leap now.
 
+The orchestrator taking over gates eventually needs actual judgment behind it, not just
+a track record of forwarding things politely — the eventual bar is something like a
+principal architect's discernment, and that's not a setting to turn on. So it doesn't
+relay a phase agent's report unexamined: before a Plan/Architecture or Implement gate
+specifically, it reads the report against `codebase-design`'s vocabulary (deep modules,
+seams, leverage, locality, the deletion test) and `scoville-code-anti-ai-slop`'s
+discipline (goal-first, no premature abstraction, no scope creep), and names any real
+concern in the gate summary rather than smoothing over it. Whether that read holds up —
+did the user agree and revise, or wave it through — gets recorded too, so the discernment
+is something built from an honest track record over many runs, the same evidence-based
+way gate-automation trust gets built, not assumed into existence.
+
 ## Quick start
 
 1. Clone this repo somewhere permanent (not a temp directory).

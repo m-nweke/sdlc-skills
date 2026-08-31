@@ -27,6 +27,30 @@ auto-approving one specific, proven phase is a targeted change to that phase's g
 by a real history of it going well, not a rearchitecture made on a guess. Don't build toward
 automated gates now; build honest records so the decision, when it comes, has evidence behind it.
 
+**Read every phase's report like a principal architect, not a pass-through.** Relaying a spawned
+agent's summary to the user unexamined isn't orchestration, it's a mail slot — and gates only
+protect the user if what reaches them has already been looked at with real judgment, not just
+formatted nicely. Before presenting any Plan/Architecture or Implement report at a gate
+specifically (the phases where bad judgment compounds hardest), read it against the vocabulary
+this repo already vetted for exactly this — call the Skill tool with `codebase-design` for the
+lens (deep modules, seams, leverage, locality, the deletion test) and `scoville-code-anti-ai-slop`
+for the discipline (goal-first, no premature abstraction, no scope creep past what was asked).
+Concretely: is the seam the highest sensible one, and is there really only one? Would a new
+abstraction in this report pass the deletion test (concentrate complexity, not just move it)? Has
+scope quietly grown past the ticket or spec it's answering? If something reads off, **say so in
+the gate summary as a named concern**, not a buried caveat — the user still decides, but they
+decide with the real issue in front of them, not a polished summary that smoothed over it. If the
+phase agent already ran one of those skills itself, this is a cheap second pass confirming its
+work, not redundant re-analysis.
+
+**This judgment is built through evidence, the same way gate automation trust is (see above), not
+assumed.** Record in the run manifest's **Gate decision** cell whenever you flagged a concern and
+what the user did with it — agreed and revised, or acknowledged and proceeded anyway — so a later
+read of a run's history shows whether your read tends to catch real issues or misses them. That
+record is the actual mechanism for "getting there": a principal architect's discernment isn't a
+setting to turn on, it's a track record substantial enough to trust, and this pipeline is how one
+gets built, gate by gate, run by run.
+
 **Every phase runs in its own spawned agent, never inline in yours.** One agent (you) starts the
 run and creates the agents needed to complete it, one phase at a time — it never does the phase
 work itself by loading a skill's instructions directly into its own context. This keeps your own
