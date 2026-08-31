@@ -151,11 +151,12 @@ keeping as-is:
   driving the browser. Reference commands (`design-plan`, `design-review`) and its
   heuristic fallback script (`design-audit.mjs`, used only if browsing fails) live
   in `agents/design-review-refs/`.
-  Drives the browser via gstack's `browse` skill (`tools: Skill, Read, Grep, Glob,
-  Bash`) rather than `mcp__playwright`/`mcp__chrome-devtools` — this machine's
-  CLAUDE.md mandates `browse` for all web automation and forbids raw
-  `mcp__claude-in-chrome__*` calls, so the agent was rewired to go through it
-  instead of depending on an MCP server that was never installed here.
+  Drives the browser directly via `mcp__claude-in-chrome__*` rather than
+  `mcp__playwright`/`mcp__chrome-devtools` — neither MCP server is installed in this
+  environment, but `claude-in-chrome` is. (An earlier pass wired this through
+  gstack's `browse` skill instead, on the strength of a since-removed CLAUDE.md line
+  that mandated `browse` for all web automation; that mandate is gone, so the agent
+  was rewired back to the direct tool.)
 
 ## Composition notes
 
