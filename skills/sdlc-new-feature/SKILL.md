@@ -1,16 +1,15 @@
 ---
 name: sdlc-new-feature
-description: Run the full gated SDLC pipeline for a new feature or product idea, from discovery through ship. User-invoked only — call it by name when you want the supervised pipeline rather than jumping straight into design or code.
-disable-model-invocation: true
+description: Run the full gated, multi-phase SDLC pipeline for a new feature or product idea — discovery through ship, approval required after every phase. Use when the user explicitly wants the whole supervised build process, not just one phase of it; discovery-ideation still owns a bare "here's an idea" with no request for the full pipeline.
 ---
 
 # SDLC: New Feature
 
-Thin entry point into `sdlc-pipeline` for `kind: feature`. Kept user-invoked deliberately: this
-repo's other model-invoked skills (`discovery-ideation`, `frontend-design`, `tdd`, ...) already
-own their natural-language triggers, and firing the full gated pipeline autonomously on top of
-them would compete for the same requests. Reach for this skill by name when you want the whole
-supervised flow, not the ad-hoc one.
+Thin entry point into `sdlc-pipeline` for `kind: feature`. This fires only when the request is
+explicitly for the whole supervised, multi-phase pipeline — `discovery-ideation` still owns a
+bare "here's an idea" with no ask for the full trail. When in doubt about which the user wants,
+ask rather than guessing: the pipeline commits to a slug and a run manifest, so starting it on
+the wrong reading is more to unwind than one clarifying question.
 
 1. Capture the raw request in the user's own words — don't paraphrase it away.
 2. Derive a short kebab-case `slug` for it. Ask if nothing obvious presents itself; don't guess

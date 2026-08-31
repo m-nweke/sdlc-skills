@@ -1,8 +1,7 @@
 ---
 name: handoff
-description: Compact the current conversation into a handoff document for another agent to pick up.
+description: Compact the current conversation into a handoff document for another agent to pick up. Use when a session is ending, a phase is finishing before the next one starts, or the user asks to hand off, summarize for a future session, or continue this later.
 argument-hint: "What will the next session be used for?"
-disable-model-invocation: true
 ---
 
 Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save to the temporary directory of the user's OS - not the current workspace.

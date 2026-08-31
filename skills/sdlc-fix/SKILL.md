@@ -1,16 +1,14 @@
 ---
 name: sdlc-fix
-description: Run the full gated SDLC pipeline for a bug fix or defect, from diagnosis through ship. User-invoked only — call it by name when a fix is big enough to want a plan/review/ship trail, not for a quick one-off debug.
-disable-model-invocation: true
+description: Run the full gated, multi-phase SDLC pipeline for a bug fix or defect — diagnosis through ship, approval required after every phase. Use when the user explicitly wants the whole supervised trail (plan, review, ship) for a fix, not just a quick debug; diagnosing-bugs still owns a bare "this is broken, help me debug it."
 ---
 
 # SDLC: Fix
 
-Thin entry point into `sdlc-pipeline` for `kind: fix`. Kept user-invoked deliberately, same
-reasoning as `sdlc-new-feature`: `diagnosing-bugs` already owns the natural-language trigger for
-"debug this" / "something's broken," so this skill never fires alongside it — it's a separate,
-explicitly-chosen door into the same eventual diagnosis work, wrapped in the pipeline's sizing
-and gates.
+Thin entry point into `sdlc-pipeline` for `kind: fix`. This fires only when the request is
+explicitly for the whole supervised trail — `diagnosing-bugs` still owns a bare "this is broken,
+help me debug it" with no ask for plan/review/ship. When in doubt about which the user wants,
+ask rather than guessing.
 
 1. Capture the bug report or defect in the user's own words: symptom, where it was seen, repro
    if known.

@@ -247,22 +247,27 @@ but aren't redundant — they compose in order:
 `redesign-skill` runs this same chain in reverse-gear for an existing site: audit
 first, then apply the same direction/craft/audit steps without breaking functionality.
 
-**The pipeline layer's three entry points** (`sdlc-new-feature`/`sdlc-fix`/
-`sdlc-redesign`) are deliberately **not** model-invoked, even though it would be
-convenient to have one fire automatically on "let's build X." `diagnosing-bugs`
-already owns "debug this," `redesign-skill` already owns "redesign this page," and
-`discovery-ideation` already owns raw feature ideation — an auto-firing entry point on
-top would compete with all three for the same triggers. You reach for `sdlc-*` by name
-when the work is worth the full gated trail; the underlying skills stay reachable
-directly for anything lighter.
+**Every skill in this repo is model-invoked — nothing sets `disable-model-invocation`.**
+That's a deliberate, repo-wide policy, not just a fix for one broken chain: a skill
+flagged `disable-model-invocation: true` can't be reached through the Skill tool by
+*any* caller, including another skill, only typed directly by a human. This repo relies
+on skills invoking skills throughout — `sdlc-pipeline` delegating into every phase,
+`improve-codebase-architecture` calling `grilling` and `domain-modeling` mid-flow, and
+so on — so a flagged skill anywhere in a delegation chain is a dead end the calling
+skill can't route around, not a safety rail. (An earlier version of this repo left
+`sdlc-pipeline`, `wayfinder`, and several others flagged, and every one of them broke
+the pipeline the same way: an entry point invoked it, got refused, and had to ask the
+user to run the command by hand instead.)
 
-`sdlc-pipeline` itself, underneath those entry points, *is* model-invoked — it has to
-be, so the entry points can hand off to it through the Skill tool. (A skill with
-`disable-model-invocation: true` can't be invoked by another skill either, only typed
-directly by a human — an earlier version of this repo got that wrong and left the
-entry points unable to actually reach the engine.) Its description just states plainly
-that it needs `kind`/`request`/`slug`, which only the entry points supply, so it stays
-inert against a bare request instead of needing the flag to enforce that.
+Distinct triggers still matter, though — a bare "debug this" should reach
+`diagnosing-bugs`, not the multi-phase `sdlc-fix` pipeline, and a bare "make this look
+better" should reach `redesign-skill`, not `sdlc-redesign`. That distinction now lives
+entirely in how each description is worded (`sdlc-*`'s descriptions state explicitly
+that they're for when the user wants the *whole* supervised, gated trail, not one
+phase of it) rather than in whether the skill can be invoked at all. Sharpen a
+description if you see it misfire, don't reach for the flag to patch it — the flag
+solves a different problem (keeping a skill off the model's own initiative entirely)
+and reintroduces the dead-end failure above wherever another skill needs to reach it.
 
 Kept as separate skills rather than merged throughout — collapsing them would mix data,
 judgment, implementation, and audit into one file, which is exactly what "kept

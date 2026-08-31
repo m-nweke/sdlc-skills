@@ -1,16 +1,14 @@
 ---
 name: sdlc-redesign
-description: Run the full gated SDLC pipeline for redesigning an existing site or screen, from audit through ship. User-invoked only — call it by name when a redesign is big enough to want a plan/review/ship trail, not for a quick one-off polish pass.
-disable-model-invocation: true
+description: Run the full gated, multi-phase SDLC pipeline for redesigning an existing site or screen — audit through ship, approval required after every phase. Use when the user explicitly wants the whole supervised trail (plan, review, ship) for a redesign, not just a one-off polish pass; redesign-skill still owns a bare "make this look better."
 ---
 
 # SDLC: Redesign
 
-Thin entry point into `sdlc-pipeline` for `kind: redesign`. Kept user-invoked deliberately, same
-reasoning as `sdlc-new-feature`: `redesign-skill` already owns the natural-language trigger for
-"make this look better" / "redesign this page," so this skill never fires alongside it — it's a
-separate, explicitly-chosen door into the same eventual audit-and-upgrade work, wrapped in the
-pipeline's sizing and gates.
+Thin entry point into `sdlc-pipeline` for `kind: redesign`. This fires only when the request is
+explicitly for the whole supervised trail — `redesign-skill` still owns a bare "make this look
+better" with no ask for plan/review/ship. When in doubt about which the user wants, ask rather
+than guessing.
 
 1. Capture what's being redesigned (URL, file, or screen) and what's driving it, in the user's
    own words.
