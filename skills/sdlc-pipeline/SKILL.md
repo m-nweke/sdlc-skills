@@ -195,7 +195,11 @@ write a handoff, report a relay instead of a finish, you resolve it and spawn a 
 
 **No agent's task — yours or a phase-orchestrator's — should run past roughly 40% of its context
 window.** There's no tool that reports a running agent's actual context usage — every lever here
-works from proxies, not a live number.
+works from proxies, not a live number. `context-budget`'s estimation method (`words × 1.3` for
+prose, `chars / 4` for code-heavy output) is that proxy, applied to what an agent has itself read
+and produced so far rather than to a static skill/agent library — a phase-orchestrator unsure
+whether it's ballooning can tally its own accumulated file reads and tool output the same way
+`context-budget` tallies loaded components, instead of going on feel alone.
 
 - **You never absorb phase content.** Your context holds spawn prompts, the short summary each
   phase-orchestrator reports back, and gate decisions — never a phase's actual working content.
@@ -213,7 +217,9 @@ works from proxies, not a live number.
   sprawls once the phase-orchestrator is actually inside it. Every prompt must carry this
   instruction, verbatim in spirit: *watch proxies for rising context use — many files read, many
   tool calls made, output that's already exceeded what "one focused thing" should produce, or
-  discovering the task is bigger than the prompt implied. At that signal, stop starting new work.*
+  discovering the task is bigger than the prompt implied. When genuinely unsure, apply
+  `context-budget`'s estimation method to your own accumulated reads and output rather than
+  guessing from feel. At that signal, stop starting new work.*
 - **Trigger 2 — needs user input.** Several delegate skills assume they can prompt the user
   mid-task (`grilling`'s rounds, a seam confirmation in `tdd`, `to-tickets`' breakdown gate, a
   clarifying-question step, ...) — but a phase-orchestrator has no path to a live human, so it
@@ -251,6 +257,18 @@ works from proxies, not a live number.
   your *own* context is approaching the same threshold across a long run (many phases, many
   relays), say so and consider writing your own handoff the same way, rather than pushing on
   silently just because nothing forces you to stop.
+- **Compacting your own context between phases.** Every gate you sit at is a phase-boundary
+  point in `strategic-compact`'s decision table — this pipeline's seven phases are the concrete
+  instance of "research → planning → implementation → testing" that table already covers. After a
+  gate is approved, before spawning the next phase-orchestrator, treat that table as the default
+  judgment: a `Discovery`/`Research` → `Design`/`Plan` transition is bulky exploration handing off
+  to a distilled artifact (`Yes`), `Plan/Architecture` → `Implement` is the plan already written to
+  the run manifest and phase artifacts (`Yes`), but a relay's continuation mid-phase is the "mid-
+  implementation" row (`No` — don't compact between a relay and its continuation, you'd lose the
+  handoff's own context along with everything else). When it says `Yes` and your own context is
+  actually large, suggest `/compact` to the user rather than defaulting to pushing straight into
+  the next phase — the run manifest and phase artifacts on disk are what needs to survive, per
+  `strategic-compact`'s "what persists" table, not your conversation history.
 
 ## Model selection
 
