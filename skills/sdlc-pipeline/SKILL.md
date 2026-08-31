@@ -18,12 +18,22 @@ deliberate departure from lighter shared-pipeline designs that gate only after p
 before commit: reduced supervision gets earned per-phase as it proves reliable, not assumed
 up front.
 
+**Gates are human-only for now, by design, not by limitation.** This orchestrator is meant to
+eventually take over some of these gates itself — that's the point of building it as a real
+orchestrator rather than a checklist. Getting there needs evidence, not a shortcut: record every
+gate decision distinctly (what was presented, Approve/Revise/Regenerate/Skip, and why, captured
+through `AskUserQuestion`'s own options rather than paraphrased) so a future policy of
+auto-approving one specific, proven phase is a targeted change to that phase's gate step, backed
+by a real history of it going well, not a rearchitecture made on a guess. Don't build toward
+automated gates now; build honest records so the decision, when it comes, has evidence behind it.
+
 **Every phase runs in its own spawned agent, never inline in yours.** One agent (you) starts the
 run and creates the agents needed to complete it, one phase at a time — it never does the phase
 work itself by loading a skill's instructions directly into its own context. This keeps your own
 context to just spawn prompts, short summaries, and gate decisions, so it stays small enough to
 orchestrate a long run without itself becoming the bottleneck. See **Context budget** below for
-how this composes with phases that are themselves too big for one agent.
+how this composes with phases that are themselves too big for one agent, or turn out too big only
+once already underway.
 
 ## Inputs
 
@@ -87,10 +97,10 @@ Create (or append to, if `docs/pipeline/<slug>.md` already exists) a run manifes
 **Kind:** <feature|fix|redesign>  **Size:** <trivial|small|standard|large>
 **Request:** <raw ask>
 
-| Phase | Agent(s) spawned | Status | Artifact | Gate decision |
-| --- | --- | --- | --- | --- |
-| Discovery | 1 | done | docs/discovery/<slug>.md | Approved |
-| ... | | | | |
+| Phase | Agent(s) spawned | Model(s) | Status | Artifact | Gate decision |
+| --- | --- | --- | --- | --- | --- |
+| Discovery | 1 | sonnet | done | docs/discovery/<slug>.md | Approved |
+| ... | | | | | |
 ```
 
 For the Design phase, record regenerations in the **Gate decision** cell as they happen (e.g.
@@ -109,15 +119,19 @@ For each phase your size classification includes, in order:
 
 1. **Write a self-contained prompt** for the phase — the spawned agent starts with zero context,
    so include: `kind`/`slug`/`request`, which delegate skill(s) to invoke (from the table below),
-   the exact artifact to produce and where to save it, and *pointers* (file paths, not pasted
-   content) to any prior phase artifacts it needs to read. Never paste a prior artifact's full
-   content into the prompt — that's exactly the accumulation this design avoids.
-2. **Spawn it with the Agent tool** — omit `subagent_type` (general-purpose) unless a named agent
-   already fits (e.g. `design-review` for a live-browser QA pass). Never use `subagent_type:
-   "fork"` for phase work — a fork inherits your full conversation context, which defeats the
-   entire point of a fresh, scoped agent.
-3. Record the artifact path or tracker link the agent reports back, and how many agents it took
-   (1, unless the phase decomposed further — see **Context budget**), in the run manifest.
+   the exact artifact to produce and where to save it, *pointers* (file paths, not pasted content)
+   to any prior phase artifacts it needs to read, and the **self-monitoring instruction** from
+   Context budget below — every spawned agent needs that instruction in its own prompt, since it
+   never reads this file itself. Never paste a prior artifact's full content into the prompt —
+   that's exactly the accumulation this design avoids.
+2. **Pick a model** for the task (see **Model selection** below) and **spawn it with the Agent
+   tool** — omit `subagent_type` (general-purpose) unless a named agent already fits (e.g.
+   `design-review` for a live-browser QA pass). Never use `subagent_type: "fork"` for phase work —
+   a fork inherits your full conversation context, which defeats the entire point of a fresh,
+   scoped agent.
+3. Record the artifact path or tracker link the agent reports back, which model it ran on, and
+   how many agents it took (1, unless the phase decomposed or relayed further — see **Context
+   budget**), in the run manifest.
 4. Present a short summary of what the phase produced — not the full artifact, the artifact
    *is* the detail — and gate with `AskUserQuestion`: **Approve** (spawn the next phase's agent),
    **Revise** (spawn a fresh agent to adjust this phase's artifact, re-gate), or **Skip remaining
@@ -126,24 +140,58 @@ For each phase your size classification includes, in order:
    hands off.
 5. Update the run manifest's gate decision before moving on.
 
-## Context budget: spawn, don't accumulate
+## Context budget: spawn, monitor, relay
 
-**No agent's task — yours or a phase agent's — should need more than roughly 40% of its context
-window.** That's the reason phase work is spawned rather than run inline: an orchestrator that
-absorbed every phase's full working context (codebase exploration, draft iterations, tool output)
-would blow well past that by Ship. Two levers keep it there:
+**No agent's task — yours or a phase agent's — should run past roughly 40% of its context
+window.** There's no tool that reports a running agent's actual context usage, yours or a spawned
+agent's — every lever here works from proxies, not a live number. Three levers, in order:
 
 - **You never absorb phase content.** Your context holds spawn prompts, the short summary each
   agent reports back, and gate decisions — never a phase's actual working content. That's what
-  keeps *your* context small across an entire multi-phase run.
-- **A phase agent that's still too big decomposes further.** If a phase's own scope looks too
-  large for one agent before you spawn it — many tickets in Implement, a sprawling Review, a
-  large-surface codebase exploration in Plan — spawn it as a small coordinating agent whose job
-  is itself to spawn one sub-agent per ticket/seam/file-group, collect their reports, and return
-  *one* consolidated artifact and summary to you. You still only see one report either way; the
-  decomposition happens a level down. There's no tool to measure a running agent's context usage
-  directly, so judge this from scope up front (file count, ticket count, breadth of concern) —
-  a task that's "one focused thing" fits in an agent; a task that's "several of those" doesn't.
+  keeps *your* context small across an entire multi-phase run, and it's the one lever that's a
+  hard guarantee rather than a proxy.
+- **Judge scope before you spawn, decompose if it's already too big.** If a phase's own scope
+  looks too large for one agent before you spawn it — many tickets in Implement, a sprawling
+  Review, a large-surface codebase exploration in Plan — spawn it as a small coordinating agent
+  whose job is itself to spawn one sub-agent per ticket/seam/file-group, collect their reports,
+  and return *one* consolidated artifact and summary to you. You still only see one report either
+  way; the decomposition happens a level down. Judge this from scope up front (file count, ticket
+  count, breadth of concern) — a task that's "one focused thing" fits in an agent; a task that's
+  "several of those" doesn't.
+- **A phase agent that turns out too big mid-task self-monitors and relays.** Upfront judgment
+  misses sometimes — a task looks scoped and then sprawls once the agent is actually inside it.
+  Every spawned agent's prompt must carry this instruction (write it into every prompt in step 4
+  above, verbatim in spirit): *watch proxies for rising context use — many files read, many tool
+  calls made, output that's already exceeded what "one focused thing" should produce, or
+  discovering the task is bigger than the prompt implied. At that signal, stop starting new work.
+  Instead, write a handoff document to `docs/pipeline/<slug>-relay-<phase>.md`: what's done, what
+  remains, the key facts and decisions reached, pointers to files touched (not their content), and
+  the exact next step — then report back that this task needs to be relayed, not that it's done.*
+  On a relay report, spawn a **continuation agent** whose entire prompt is "read the handoff at
+  `<path>` and continue" — the handoff *is* its context, it needs nothing else. Once it confirms
+  pickup, the prior agent's turn is simply over: there's no running process to stop, its thread
+  just stops being referenced. A continuation can relay again itself if the remaining work is
+  still too big — chain as many hops as the task genuinely needs. Record every hop in the run
+  manifest's **Agent(s) spawned** count (e.g. `2 (1 relay)`) — a phase that relays often is a
+  signal its upfront scope judgment keeps landing wrong, worth revisiting rather than re-guessing
+  every time.
+
+## Model selection
+
+Pick a `model` for each spawned agent rather than leaving every phase on one default — the Agent
+tool takes it directly:
+
+- **Mechanical or narrow** (formatting an already-agreed ticket breakdown, a small config fix, a
+  well-understood bug triage) — `haiku`.
+- **Typical phase work** (most Discovery/Research/Design/Plan/Implement work — running a skill
+  end-to-end against a clear brief) — `sonnet`, or omit to inherit the session default.
+- **High-judgment or high-stakes** (architecture decisions in Plan or `harden`, `security-review`,
+  charting a `large` effort with `wayfinder`) — `opus`.
+
+Treat this as a default, not a lock-in — a stated user preference always wins. Record which model
+ran each phase in the run manifest alongside the agent count, so a mismatch (a `haiku` agent
+visibly struggling with judgment-heavy work) is evidence for next time, not just a felt cost in
+the moment.
 
 ### Phase table
 

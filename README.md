@@ -51,9 +51,25 @@ loading a phase's skill directly into the orchestrator's own conversation. Each 
 agent's task ends in a concrete artifact, which is raised and reviewed by you before it's
 handed to the next agent, and the orchestrator itself only ever holds spawn prompts and
 short summaries, never a phase's full working content. The goal behind that split: no
-single agent's task — orchestrator or phase — should need more than roughly 40% of its
-context window, so a phase whose own scope is too large (many tickets, a sprawling
-review) decomposes the same way one level down instead of blowing out one agent's budget.
+single agent's task — orchestrator or phase — should run past roughly 40% of its context
+window. There's no tool that reports a running agent's actual usage, so it's enforced two
+ways: scope judged up front (a phase whose own scope is too large — many tickets, a
+sprawling review — decomposes into a small coordinator spawning one sub-agent per
+ticket/seam, one level down), and self-monitoring at runtime for when upfront judgment
+misses — every spawned agent watches its own proxies (files read, tool calls made, scope
+creep against the prompt) and, on that signal, writes a handoff document instead of
+pushing on, so the orchestrator can spawn a continuation agent that picks up from the
+handoff with a clean context and finishes the phase. The orchestrator also picks a model
+per phase (`haiku` for mechanical work, `sonnet` for typical phase work, `opus` for
+judgment-heavy decisions) rather than running every phase on one default.
+
+Gates stay human-only for now, by design. Every gate decision — what was presented,
+Approve/Revise/Regenerate/Skip, and why — is recorded distinctly enough that a future
+policy of auto-approving one specific, proven-trustworthy phase can be a targeted change
+backed by real history, not a rearchitecture made on a guess. The orchestrator is meant
+to eventually take over some of these gates itself; the discipline above (spawn small,
+record everything, decide nothing without evidence) is what makes that a safe change to
+make later instead of a leap now.
 
 ## Quick start
 
@@ -95,12 +111,17 @@ Each one just captures your request, gives it a short slug, and hands off to
    starts the run and creates the agents needed to complete it, one at a time, each
    invoking the skill that owns that phase (discovery, research, design,
    planning/architecture, implementation, review, shipping — the full map is in
-   [SDLC phase mapping](#sdlc-phase-mapping)). The orchestrating agent's own context
-   never absorbs a phase's working content, only the short summary each spawned agent
-   reports back — that's what keeps a long run from blowing out its context window. A
-   phase whose own scope is too large for one agent (many tickets in Implement, a
-   sprawling Review) decomposes the same way one level down: a small coordinating agent
-   spawns one sub-agent per ticket/seam and returns a single consolidated report.
+   [SDLC phase mapping](#sdlc-phase-mapping)), on whichever model fits the task
+   (mechanical work gets a cheaper model, judgment-heavy work gets a stronger one). The
+   orchestrating agent's own context never absorbs a phase's working content, only the
+   short summary each spawned agent reports back — that's what keeps a long run from
+   blowing out its context window. A phase whose own scope is too large for one agent
+   (many tickets in Implement, a sprawling Review) decomposes the same way one level
+   down: a small coordinating agent spawns one sub-agent per ticket/seam and returns a
+   single consolidated report. And if a phase turns out too big only once it's already
+   underway, the agent doing it notices (rising files-read/tool-call proxies, scope
+   creeping past the prompt), writes a handoff instead of pushing through, and the
+   orchestrator spawns a continuation agent to pick it up with a clean context.
 3. **Stops after every phase** and shows you what the spawned agent produced. You get
    three choices: **Approve** (spawn the next phase's agent), **Revise** (spawn a fresh
    agent to adjust this phase's artifact), or **Skip remaining phases** (ship what
