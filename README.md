@@ -74,6 +74,7 @@ it) to start:
 | Build something new | `sdlc-new-feature` |
 | Fix a bug, sized enough to want a paper trail | `sdlc-fix` |
 | Redesign an existing page/screen | `sdlc-redesign` |
+| Harden an app toward best-practice architecture | `sdlc-harden` |
 
 Each one just captures your request, gives it a short slug, and hands off to
 `sdlc-pipeline`, which:
@@ -104,6 +105,13 @@ Implementation happens test-first. QA runs the anti-slop guardrails plus a live-
 accessibility pass. Ship handles merge conflicts and any manual steps. You approved
 seven times; you didn't do any of the work in between.
 
+`sdlc-harden` follows the same gate-every-phase shape but a different phase set:
+Discovery and Design are skipped (there's no idea to frame and, usually, no visual
+direction to agree on), and Research is never skipped the way it can be for a small
+feature — it's where the pipeline gathers the actual "industry best practices" (security
+checklists, architecture/resilience patterns for your stack and domain) that the rest of
+the run audits the codebase against and a mandatory `security-review` closes out.
+
 ### Using a skill directly instead
 
 The pipeline is for effort worth a full gated trail. For anything lighter — a quick
@@ -123,8 +131,8 @@ reusing this repo outside personal use.
 
 **Authored here:**
 - `discovery-ideation` — frames a raw idea/problem into a grilled, written brief
-- `sdlc-pipeline`, `sdlc-new-feature`, `sdlc-fix`, `sdlc-redesign` — the shared
-  orchestration engine and its three entry points (see [Using the pipeline](#using-the-pipeline))
+- `sdlc-pipeline`, `sdlc-new-feature`, `sdlc-fix`, `sdlc-redesign`, `sdlc-harden` — the
+  shared orchestration engine and its four entry points (see [Using the pipeline](#using-the-pipeline))
 
 **Vendored from [benjaminstelzer/scoville-*](https://github.com/benjaminstelzer):**
 - `scoville-research` — evidence-first research; extended with background-agent
@@ -196,11 +204,11 @@ this repo is meant to be edited, not just mirrored from upstream.
 | Phase | Skills |
 | --- | --- |
 | Discovery & Ideation | `discovery-ideation`, `grilling`, `wayfinder` (for oversized efforts) |
-| Research | `scoville-research`, `ui-ux-pro-max` (design-data lookups) |
+| Research | `scoville-research`, `ui-ux-pro-max` (design-data lookups). For hardening, this is where current security/architecture best practices for the stack get gathered. |
 | Design | `ui-ux-pro-max` (data) → `frontend-design` (direction) → `imagegen-frontend-web`/`imagegen-frontend-mobile` (pre-code visual prototypes) → `silk-design` (craft) → `design-system` (tokens/component specs); `redesign-skill` for existing sites |
-| Code architecture | `codebase-design`, `domain-modeling`, `improve-codebase-architecture`, `wayfinder`, `to-spec`, `to-tickets` |
+| Code architecture | `codebase-design`, `domain-modeling`, `improve-codebase-architecture` (fed by Research's findings when hardening), `wayfinder`, `to-spec`, `to-tickets` |
 | Implementation | `tdd`, `prototype`, `implement`, `ui-styling`, `scoville-code-anti-ai-slop` |
-| QA | `scoville-code-anti-ai-slop` (review outcome), `diagnosing-bugs`, `scoville-ui-anti-ai-slop` (discipline) + `design-review` agent (live-browser mechanism) |
+| QA | `scoville-code-anti-ai-slop` (review outcome), `diagnosing-bugs`, `scoville-ui-anti-ai-slop` (discipline) + `design-review` agent (live-browser mechanism); `security-review` (mandatory when hardening, auto-escalated otherwise on auth/secrets/DB diffs) |
 | Deployment / shipping | `resolving-merge-conflicts`, `wizard` |
 | Cross-cutting | `handoff` — hands a phase's context to the next agent |
 
@@ -260,11 +268,13 @@ the pipeline the same way: an entry point invoked it, got refused, and had to as
 user to run the command by hand instead.)
 
 Distinct triggers still matter, though — a bare "debug this" should reach
-`diagnosing-bugs`, not the multi-phase `sdlc-fix` pipeline, and a bare "make this look
-better" should reach `redesign-skill`, not `sdlc-redesign`. That distinction now lives
-entirely in how each description is worded (`sdlc-*`'s descriptions state explicitly
-that they're for when the user wants the *whole* supervised, gated trail, not one
-phase of it) rather than in whether the skill can be invoked at all. Sharpen a
+`diagnosing-bugs`, not the multi-phase `sdlc-fix` pipeline; a bare "make this look
+better" should reach `redesign-skill`, not `sdlc-redesign`; a bare "find refactor
+opportunities" should reach `improve-codebase-architecture`, not the research-plus-
+security-mandate `sdlc-harden`. That distinction now lives entirely in how each
+description is worded (`sdlc-*`'s descriptions state explicitly that they're for when
+the user wants the *whole* supervised, gated trail, not one phase of it) rather than in
+whether the skill can be invoked at all. Sharpen a
 description if you see it misfire, don't reach for the flag to patch it — the flag
 solves a different problem (keeping a skill off the model's own initiative entirely)
 and reintroduces the dead-end failure above wherever another skill needs to reach it.
