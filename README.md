@@ -216,6 +216,10 @@ reusing this repo outside personal use.
 - `discovery-ideation` — frames a raw idea/problem into a grilled, written brief
 - `sdlc-pipeline`, `sdlc-new-feature`, `sdlc-fix`, `sdlc-redesign`, `sdlc-harden` — the
   shared orchestration engine and its four entry points (see [Using the pipeline](#using-the-pipeline))
+- `work-ticket` — takes a Jira ticket from paste to reviewed PR in one fast session
+  (not the gated pipeline above); composes `diagnosing-bugs` for non-obvious root
+  causes, `tdd` for test-first implementation, and `codebase-design` /
+  `scoville-code-anti-ai-slop` as a judgment pass layered on `code-review`
 
 **Vendored from [benjaminstelzer/scoville-*](https://github.com/benjaminstelzer):**
 - `scoville-research` — evidence-first research; extended with background-agent
