@@ -247,13 +247,22 @@ but aren't redundant — they compose in order:
 `redesign-skill` runs this same chain in reverse-gear for an existing site: audit
 first, then apply the same direction/craft/audit steps without breaking functionality.
 
-**The pipeline layer** (`sdlc-pipeline` + `sdlc-new-feature`/`sdlc-fix`/`sdlc-redesign`)
-is deliberately **not** model-invoked, even though it would be convenient to have it
-fire automatically on "let's build X." `diagnosing-bugs` already owns "debug this,"
-`redesign-skill` already owns "redesign this page," and `discovery-ideation` already
-owns raw feature ideation — an auto-firing pipeline on top would compete with all three
-for the same triggers. You reach for `sdlc-*` by name when the work is worth the full
-gated trail; the underlying skills stay reachable directly for anything lighter.
+**The pipeline layer's three entry points** (`sdlc-new-feature`/`sdlc-fix`/
+`sdlc-redesign`) are deliberately **not** model-invoked, even though it would be
+convenient to have one fire automatically on "let's build X." `diagnosing-bugs`
+already owns "debug this," `redesign-skill` already owns "redesign this page," and
+`discovery-ideation` already owns raw feature ideation — an auto-firing entry point on
+top would compete with all three for the same triggers. You reach for `sdlc-*` by name
+when the work is worth the full gated trail; the underlying skills stay reachable
+directly for anything lighter.
+
+`sdlc-pipeline` itself, underneath those entry points, *is* model-invoked — it has to
+be, so the entry points can hand off to it through the Skill tool. (A skill with
+`disable-model-invocation: true` can't be invoked by another skill either, only typed
+directly by a human — an earlier version of this repo got that wrong and left the
+entry points unable to actually reach the engine.) Its description just states plainly
+that it needs `kind`/`request`/`slug`, which only the entry points supply, so it stays
+inert against a bare request instead of needing the flag to enforce that.
 
 Kept as separate skills rather than merged throughout — collapsing them would mix data,
 judgment, implementation, and audit into one file, which is exactly what "kept

@@ -1,7 +1,6 @@
 ---
 name: sdlc-pipeline
-description: Shared orchestration engine that carries one piece of work through the SDLC — discovery, research, design, plan, implement, review, ship — delegating each phase to the skill that owns it and gating on user approval at every phase transition. Invoked by sdlc-new-feature, sdlc-fix, and sdlc-redesign; user-invoked only, never fires on a raw request.
-disable-model-invocation: true
+description: Internal orchestration engine for the sdlc-new-feature/sdlc-fix/sdlc-redesign entry-point skills. Requires kind, request, and slug inputs, which only those entry points supply — do not invoke this directly from a bare user message; invoke the matching sdlc-* entry point instead and let it hand off here.
 ---
 
 # SDLC Pipeline
