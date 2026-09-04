@@ -36,3 +36,21 @@ When the shape of that interface is itself in question (how deep the module is, 
 - **Red before green.** Write the failing test first, then only enough code to pass it. Don't anticipate future tests or add speculative features.
 - **One slice at a time.** One seam, one test, one minimal implementation per cycle.
 - **Refactoring is not part of the loop.** It belongs to the review stage (see the `code-review` skill), not the red → green implementation cycle.
+
+## Running tests: full suite at the ends, blast radius in between
+
+Before the first cycle, check how expensive this repo's suite actually is: how many test files exist, whether the runner reports a baseline run time, and whether any tests need external services (DB, network, browser) that make them slow or flaky. Don't assume — a small repo's full suite may already be sub-second, making all of this moot.
+
+If the full suite is cheap (roughly a few seconds), just run it every cycle and skip the rest of this section.
+
+If it's expensive, bookend the work with the full suite and scope everything in between to blast radius:
+
+- **Beginning**: run the full suite once before the first red, so you know the repo's starting state and aren't chasing pre-existing failures as if you caused them.
+- **During each red-green cycle**: run only the tests in the blast radius of the change — the seam under test plus its dependents — using the runner's own filtering, not a guess at which files matter:
+  - Jest/Vitest: the specific test file path, or `--findRelatedTests <changed files>`.
+  - pytest: `pytest path/to/test_file.py::TestClass::test_name` or `-k <pattern>`.
+  - Go: `go test ./path/to/package/...`.
+  - RSpec: `rspec path/to/spec.rb:LINE`.
+
+  Prefer the tool's native "run related/changed tests" feature over hand-picking paths — it accounts for imports/dependents you'd otherwise miss. If a change touches a widely-imported module or shared fixture/config, treat the blast radius as the full suite for that cycle — narrow scoping can't see cross-module breakage there.
+- **End**: run the full suite once more before declaring the work done or handing off to review. Scoping speeds up the loop; it never replaces this final check.

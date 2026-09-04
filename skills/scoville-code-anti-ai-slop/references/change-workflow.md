@@ -32,9 +32,17 @@ as Develop work and validate it accordingly.
 - Put behavior in its canonical owner and reuse the canonical pathway.
 - Match surrounding naming, idioms, error handling, comments, and annotations.
   Name code for behavior, not novelty or history.
+- Reference types by a proper import/using/require, never by fully-qualified
+  name inline (`java.util.Map.Entry`, `com.foo.bar.Baz`). The only exception is
+  a genuine same-short-name collision between two types in scope — qualify only
+  the colliding type, import everything else normally.
 - Implement the smallest maintainable, behavior-complete result. Avoid
   speculative helpers, guards, flags, layers, compatibility paths, and nearby
   cleanup.
+- Before writing custom code, run the priority ladder in order: skip it if the
+  spec doesn't need it; reuse an existing in-repo pattern; use a built-in
+  language, framework, or platform feature; only then write the minimal custom
+  solution. Stop at the first tier that satisfies the spec.
 - Fix the evidenced root cause. Do not special-case a test or symptom.
 - Make durable work precede progress, publication, acknowledgement, or success.
 - Prefer existing dependencies and supported extension points.

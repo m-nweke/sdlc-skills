@@ -77,6 +77,19 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 - **Speculative Generality**: abstraction, parameters, or hooks added for needs the
   spec doesn't have. → delete it; inline back until a real need shows. Scoville Code's
   own scope-drift bar applies here too — this is the same failure two ways.
+- **Over-Built Solution**: custom code, a new dependency, or a hand-rolled component
+  written where skipping it, an existing in-repo pattern, or a built-in language/
+  framework/platform feature would do (e.g. a hand-built date-picker component where
+  `<input type="date">` suffices). → apply the priority ladder — skip it, reuse an
+  existing pattern, use a built-in feature, only then write minimal custom code — and
+  cut back to the cheapest tier that still meets the spec.
+- **Inline Fully-Qualified Name**: a fully-qualified name written inline in code
+  (`java.util.Map.Entry`, `com.foo.bar.Baz`) instead of a proper import/using/require
+  at the top of the file. → replace with an import and the short name. The only
+  acceptable exception is a genuine same-short-name collision between two types in
+  scope (e.g. `java.util.Date` vs `java.sql.Date`), and even then only for the
+  colliding type — everything else still gets a normal import. Flag this every time it
+  isn't a real collision.
 - **Message Chains**: long `a.b().c().d()` navigation the caller shouldn't depend on. →
   hide the walk behind one method on the first object.
 - **Middle Man**: a class or function that mostly just delegates onward. → cut it, call

@@ -54,6 +54,16 @@ canonical Plan, Work Item, and Decision mutation; this reference supplies only
 Code's implementation analysis. Without that Skill, keep using the repository's
 existing owner and do not require or simulate Scoville Plan.
 
+## Choose the smallest solution shape
+
+Before a work item, ticket, or architecture decision specifies *how* something
+gets built, run the priority ladder in order: skip it if the spec doesn't need
+it; reuse an existing in-repo pattern; use a built-in language, framework, or
+platform feature; only then spec a minimal custom solution or new dependency.
+A ticket that specs a custom build without ruling out the cheaper tiers first
+bakes the over-build in before code review ever sees it — catch it here, not
+after.
+
 ## Resolve decision ambiguity
 
 Ask when the answer changes what gets built, especially before selecting between

@@ -48,6 +48,8 @@ For each candidate, render a card with:
 - **Before / After diagram**: side-by-side, custom-drawn, illustrating the shallowness and the deepening
 - **Recommendation strength**: one of `Strong`, `Worth exploring`, `Speculative`, rendered as a badge
 
+Before rating a candidate `Strong`, check the **Solution** against the priority ladder (skip it, reuse an existing pattern, use a built-in feature, only then custom code/a new dependency) — this repo's `scoville-code-anti-ai-slop` skill carries the full version. A candidate whose fix reaches for a new service, layer, or dependency where a cheaper tier would close the same gap gets marked down to `Worth exploring` or `Speculative` and the cheaper alternative noted in the card, not silently upgraded past it.
+
 End the report with a **Top recommendation** section: which candidate you'd tackle first and why.
 
 **Use CONTEXT.md vocabulary for the domain, and the `/codebase-design` vocabulary for the architecture.** If `CONTEXT.md` defines "Order," talk about "the Order intake module," not "the FooBarHandler," and not "the Order service."

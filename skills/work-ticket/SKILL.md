@@ -13,7 +13,7 @@ Ticket → evidence → plan → minimal change → verified → self-reviewed �
 
 **Evidence before code.** Never write a line off the first plausible explanation. Find the root cause, show it at `file.js:line`, and say what confirms it. Wrong-but-confident diagnoses are the most expensive failure mode here — two dead theories on one bug before the real cause. If you have a hypothesis and not proof, say which it is.
 
-**Smallest change that fixes the root cause.** No speculative refactors, no extra abstractions, no per-case UI variants, no client-side workaround for something the backend should fix. If a workaround already exists and the real fix lands, remove the workaround — don't leave dead scaffolding. Assume the right answer is smaller than your first draft.
+**Smallest change that fixes the root cause.** No speculative refactors, no extra abstractions, no per-case UI variants, no client-side workaround for something the backend should fix. If a workaround already exists and the real fix lands, remove the workaround — don't leave dead scaffolding. Assume the right answer is smaller than your first draft. Before writing anything custom, run `scoville-code-anti-ai-slop`'s priority ladder: skip it if the ticket doesn't need it, reuse an existing in-repo pattern, use a built-in language/framework feature, only then write the minimal custom code.
 
 **Narrate trade-offs as you go.** Any real fork — where state lives, reuse vs. write new, FE-handles-null vs. BE-fixes-it, scope you're deliberately dropping — gets two or three sentences inline when you hit it: options, choice, cost. Not batched at the end, not buried in the PR. If the decision changes scope, product behavior, or an API contract, **stop and ask** instead of choosing.
 
