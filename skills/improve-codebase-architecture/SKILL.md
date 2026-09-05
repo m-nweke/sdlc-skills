@@ -23,7 +23,12 @@ This command is _informed_ by the project's domain model and built on a shared d
 
 Read the project's domain glossary (`CONTEXT.md`) and any ADRs in the area you're touching first.
 
-Then spawn a sub-agent to walk the codebase. Don't follow rigid heuristics; explore organically and note where you experience friction:
+For a single module or subsystem, spawn one sub-agent to walk it. For a scope broad enough to
+span several modules or subsystems with no single hot spot — a whole-codebase pass, or several
+named directions at once — call `fan-out-fan-in` instead: one agent per module/subsystem
+(cheap model, each reading only its own slice) reconciled by one synthesizer (strong model) into
+the candidate list this step needs. Either way, don't follow rigid heuristics; explore organically
+and note where you experience friction:
 
 - Where does understanding one concept require bouncing between many small modules?
 - Where are modules **shallow**, with an interface nearly as complex as the implementation?

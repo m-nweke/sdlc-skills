@@ -37,6 +37,8 @@ Then give a **3-line plan plus the file list** before touching anything. If it t
 
 Otherwise `feature/{TICKET}-{short-subject}`, ≤60 chars, off the epic's consolidation branch if one exists, else `develop`. State the base you picked.
 
+**Finding the consolidation branch:** check memory for an epic feature-branch plan (`to-tickets` writes one — see its `references/epic-git-workflow.md` — when it set up a multi-ticket epic). If this ticket's parent matches that plan's epic, the consolidation branch is the plan's feature branch, and the PR in Step 8 targets it instead of `develop`/`main`. After that PR merges, check the plan for the next ticket whose blockers are done and continue automatically, same standing approval as the rest of this loop — stop only when the plan is exhausted, the user interrupts, or something needs a human call. No matching plan means no epic branch: proceed as standalone.
+
 ## 4 — Implement
 
 Minimal, per the rule above.

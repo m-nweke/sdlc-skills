@@ -220,6 +220,14 @@ reusing this repo outside personal use.
   (not the gated pipeline above); composes `diagnosing-bugs` for non-obvious root
   causes, `tdd` for test-first implementation, and `codebase-design` /
   `scoville-code-anti-ai-slop` as a judgment pass layered on `code-review`
+- `fan-out-fan-in` — parallel-execution mechanism: spawns N independent sub-agents (cheap
+  model) over a broad research question or codebase scan, reconciles them with one synthesizer
+  agent (strong model). A mechanism only, no task ownership of its own — `scoville-research` and
+  `improve-codebase-architecture` call it for the "how" when their question/scope is broad enough
+  to warrant several parallel branches instead of one serial pass. Fills the slot the ECC
+  `parallel-execution-optimizer` catalogue entry was left unvendored for (see the affaan-m/ECC
+  note below) — this is that pattern actually implemented, adapted to this repo's model-per-step
+  convention rather than vendored as-is.
 
 **Vendored from [benjaminstelzer/scoville-*](https://github.com/benjaminstelzer):**
 - `scoville-research` — evidence-first research; extended with background-agent
@@ -252,6 +260,28 @@ reusing this repo outside personal use.
 - `implement` — implements a piece of work from a spec or ticket set
 - `handoff` — compacts the current conversation into a handoff document for another
   agent to pick up
+
+**Folded in from a personal `quext-skills` bundle** (Jira/GitHub-specific `/demo`,
+`/epic`, `/ticket` skills built for one employer's stack — Atlassian MCP, Lovable
+prototyping, GitHub Copilot review, a feature-branch-per-epic convention). Rather than
+vendor three more competing skills, their mechanisms were folded into the existing
+tracker-agnostic skills they overlap with, each as an explicitly-optional mode rather
+than a silent default change:
+- `to-spec/references/grounded-citations.md` — from `/demo`'s Phase 1/5: cite every
+  claim to a file/line or migration id, verify data assumptions instead of designing
+  around guesses, record rejected alternatives with their evidence. Opt-in, since it
+  trades away the base template's stale-file-path avoidance — right for a cold
+  hand-off, not the default case.
+- `to-tickets/references/epic-git-workflow.md` — from `/epic` and `/ticket`'s epic
+  mode: dependency-ordered frontier, one feature branch per epic, ticket branches PR
+  into it and auto-continue through the frontier, a gated (never auto-merged) epic
+  finale. `work-ticket`'s Step 3 branch logic and Step 8 PR-base resolve against the
+  plan this produces when one exists.
+- `/demo`'s Lovable-prototype-then-epic loop otherwise duplicates `discovery-ideation` →
+  `prototype` → `to-spec` at a different altitude for one specific stack; left
+  unvendored as a skill, since installing it would compete with that chain rather than
+  compose with it — its citation and data-verification discipline is what actually
+  generalized (see above).
 
 **Vendored from [affaan-m/ECC](https://github.com/affaan-m/ECC)** (its efficiency-skill
 catalogue; skipped `cost-tracking`, `delivery-gate`, and `plan-orchestrate` as tied to
@@ -305,9 +335,9 @@ this repo is meant to be edited, not just mirrored from upstream.
 | Phase | Skills |
 | --- | --- |
 | Discovery & Ideation | `discovery-ideation`, `grilling`, `wayfinder` (for oversized efforts) |
-| Research | `scoville-research`, `ui-ux-pro-max` (design-data lookups). For hardening, this is where current security/architecture best practices for the stack get gathered. |
+| Research | `scoville-research`, `ui-ux-pro-max` (design-data lookups); `fan-out-fan-in` under `scoville-research` when the question is broad enough for parallel branches. For hardening, this is where current security/architecture best practices for the stack get gathered. |
 | Design | `ui-ux-pro-max` (data, 3 candidate directions) → coded HTML prototype grounded in the real screen(s), tokens fixed or varied per an explicit ask (`imagegen-frontend-web`/`imagegen-frontend-mobile` only for marketing/landing pages) → **gate on a pick** → `frontend-design` (build the chosen direction) → `silk-design` (craft) → `design-system` (tokens/component specs); `redesign-skill` for existing sites, same prototype-before-fix order |
-| Code architecture | `codebase-design`, `domain-modeling`, `improve-codebase-architecture` (fed by Research's findings when hardening), `wayfinder`, `to-spec`, `to-tickets` |
+| Code architecture | `codebase-design`, `domain-modeling`, `improve-codebase-architecture` (fed by Research's findings when hardening; uses `fan-out-fan-in` for whole-codebase or multi-module scans), `wayfinder`, `to-spec` (grounded-citation mode for a cold handoff — `references/grounded-citations.md`), `to-tickets` (epic feature-branch execution structure for a real multi-ticket epic — `references/epic-git-workflow.md`) |
 | Implementation | `tdd`, `prototype`, `implement`, `ui-styling`, `scoville-code-anti-ai-slop` |
 | QA | `scoville-code-anti-ai-slop` (review outcome), `diagnosing-bugs`, `scoville-ui-anti-ai-slop` (discipline) + `design-review` agent (live-browser mechanism); `security-review` (mandatory when hardening, auto-escalated otherwise on auth/secrets/DB diffs) |
 | Deployment / shipping | `resolving-merge-conflicts`, `wizard` |

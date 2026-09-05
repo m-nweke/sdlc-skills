@@ -11,6 +11,8 @@ The issue tracker and triage label vocabulary should have been provided to you. 
 
 1. Explore the repo to understand the current state of the codebase, if you haven't already. Use the project's domain glossary vocabulary throughout the spec, and respect any ADRs in the area you're touching.
 
+If this spec is handing off cold — filed for a different engineer, or for an agent picking up the ticket in a later session, with no chance to ask a clarifying question first — switch to **grounded-citation mode**: `references/grounded-citations.md`. It cites every claim to a file/line or migration id and verifies data assumptions instead of guessing them, at the cost of the staleness risk the default template avoids. Default to the plain template otherwise.
+
 2. Sketch out the seams at which you're going to test the feature. Existing seams should be preferred to new ones. Use the highest seam possible. If new seams are needed, propose them at the highest point you can. The fewer seams across the codebase, the better - the ideal number is one.
 
 Check with the user that these seams match their expectations.

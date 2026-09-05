@@ -62,6 +62,12 @@ Work the **frontier**: any ticket whose blockers are all done. For a purely line
 
 Do NOT close or modify any parent issue.
 
+**On a real tracker, if these tickets are children of one epic** and there are enough of
+them with enough sequencing that landing straight to `main` per-ticket would be unsafe
+mid-epic — set up the feature-branch execution structure in
+`references/epic-git-workflow.md` before handing off to `work-ticket`. A small epic with
+no real dependencies can skip it and let each ticket PR straight to `main`.
+
 <local-ticket-template>
 
 # <NN>: <Ticket title>
