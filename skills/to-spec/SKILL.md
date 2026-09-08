@@ -17,7 +17,7 @@ If this spec is handing off cold — filed for a different engineer, or for an a
 
 Check with the user that these seams match their expectations.
 
-3. Write the spec using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
+3. Write the spec using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage. **If the tracker is Jira**, follow the `jira-writing` skill for the write mechanics (ADF round-trip, field/hierarchy rules) — this skill owns the spec content, `jira-writing` owns getting it into Jira intact.
 
 <spec-template>
 

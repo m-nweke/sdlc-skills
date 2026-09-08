@@ -29,6 +29,8 @@ Trace it in the code and show the evidence (§Evidence before code). Find how si
 
 **If the cause isn't obvious after a first pass** — it reproduces intermittently, spans multiple layers, or the first plausible theory doesn't fully explain the symptom — load the `diagnosing-bugs` skill and run its diagnosis loop instead of guessing further. It decides *how* to hunt the cause; §Evidence before code above still decides what counts as proof before any code gets written.
 
+**Before finalizing the plan, run it through the Ponytail ladder** (`scoville-code-anti-ai-slop`, leading with Over-Built Solution / Speculative Generality): skip it if the ticket doesn't need it, reuse an existing in-repo pattern, use a built-in language/framework feature, only then plan custom code. A plan that proposes new abstraction should say which rung it failed to satisfy with skip/reuse/built-in.
+
 Then give a **3-line plan plus the file list** before touching anything. If it touches more than three files, wait for confirmation. This checkpoint exists because late corrections cost reverts; a 30-second redirect here is the cheap version.
 
 ## 3 — Branch
@@ -51,7 +53,9 @@ Minimal, per the rule above.
 
 **Trigger:** the change touches how a value is represented — a new field for an existing concept, an enum gaining or losing a value, a flag becoming a mode, a mapper's output shape. Especially when you added a *second* spelling of something instead of changing the one spelling.
 
-Enumerate **every producer and consumer of that representation**, not just the call site the ticket named. Grep every construction path of the type you touched — `new X()`, `X.builder()`, MapStruct `*Mapper` methods, `objectMapper.convertValue(..., X.class)`, Jackson entry points — and for each, answer out loud: *what does this emit for the field I just changed?* A path that emits nothing is a finding, not a default.
+Enumerate **every producer and consumer of that representation**, not just the call site the ticket named — `new X()`, `X.builder()`, MapStruct `*Mapper` methods, `objectMapper.convertValue(..., X.class)`, Jackson entry points, and every read site.
+
+**Fan this out.** Once you've listed the construction/consumption paths, load `fan-out-fan-in` and dispatch one sub-agent per path (or per small cluster of paths in the same file) to answer, independently: *what does this emit/read for the field I just changed?* A path that emits nothing is a finding, not a default. Reconcile the results yourself into one list before moving on — don't let a sub-agent's "looks fine" stand without you having seen the line.
 
 Three things make these misses invisible, so don't wait for a signal: MapStruct doesn't error on an unmapped target; the missing value is usually `null`, which often has a plausible meaning in the new contract; and nothing fails at compile or run time. Silence is not evidence the other paths are fine.
 
@@ -76,9 +80,12 @@ For a bug, the test should fail before the fix and pass after — show both runs
 
 ## 6 — Self-review the diff
 
-Invoke the `code-review` skill on the diff before the PR. Fix what's real, say what you dismissed and why. Also re-check the paths you didn't touch but could have broken — self-introduced regressions in adjacent device types have slipped through before.
+**Run these two lenses over the diff in parallel** — they're independent reads of the same code, not a sequential pipeline:
 
-**Then read the diff once more against this repo's own vetted vocabulary** — `codebase-design` (seams, leverage, locality, the deletion test) and `scoville-code-anti-ai-slop` (no premature abstraction, no scope creep) — the same second pass `sdlc-pipeline` runs before a Plan/Implement gate. Name any real concern in the PR description or in conversation rather than smoothing it over; not every finding blocks the PR, but an unnamed one can't be weighed.
+- `code-review` for correctness. Also re-check the paths you didn't touch but could have broken — self-introduced regressions in adjacent device types have slipped through before.
+- The repo's own vetted vocabulary — `codebase-design` (seams, leverage, locality, the deletion test) and `scoville-code-anti-ai-slop` (no premature abstraction, no scope creep, the Ponytail ladder) — the same second pass `sdlc-pipeline` runs before a Plan/Implement gate.
+
+Load `fan-out-fan-in` and dispatch one sub-agent per lens, then reconcile the two result sets yourself. Fix what's real, say what you dismissed and why. Name any real concern in the PR description or in conversation rather than smoothing it over; not every finding blocks the PR, but an unnamed one can't be weighed.
 
 ## 7 — Commit
 
