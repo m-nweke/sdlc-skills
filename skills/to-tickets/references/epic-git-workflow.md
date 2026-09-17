@@ -1,8 +1,7 @@
 # Epic feature-branch workflow
 
-Source: adapted from Quext's `/epic` and `/ticket` skills (`quext-skills/epic`,
-`quext-skills/ticket`), which set up and work a long-lived feature branch for a real
-issue-tracker epic.
+Source: adapted from a prior personal skills bundle's `/epic` and `/ticket` skills, which
+set up and work a long-lived feature branch for a real issue-tracker epic.
 
 `to-tickets` decides *what* the tickets are and their blocking edges. This reference is
 for the git structure that executes them, once they're published to a real tracker as

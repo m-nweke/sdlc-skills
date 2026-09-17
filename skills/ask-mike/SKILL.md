@@ -115,12 +115,12 @@ The exact slash command or trigger phrase to copy-paste right now, ready to run.
 
 Calibrate every recommendation to this stack and workflow:
 
-- **Primary language**: Java / Spring Boot (IoT backend for Quext property management)
-- **Domain**: Honeywell Resideo thermostat integrations, device provisioning, command dispatch
-- **Repos**: `Asmartment/quext-iot-backend` (primary)
+- **Primary language**: Java / Spring Boot (IoT backend)
+- **Domain**: smart-device integrations, device provisioning, command dispatch
+- **Repos**: a primary backend service repo
 - **Infra**: Kafka (event streaming), PostgreSQL + Flyway (migrations), Redis (caching/sessions), WireMock + TestContainers (integration testing)
 - **CI/CD**: Jenkins → ArgoCD
-- **Workflow style**: Jira-driven (`quext.atlassian.net`), parallel worktrees, multi-agent dispatch
+- **Workflow style**: Jira-driven, parallel worktrees, multi-agent dispatch
 - **Session continuity**: HANDOFF files, `/recall` to rebuild context before picking up a thread
 
 Speak to this context directly in recommendations. If the user is investigating a Kafka consumer bug, point them to `/diagnosing-bugs` and note that `/sdlc-harden` covers retry logic and DLQ patterns. If they're starting a Jira ticket, name `/work-ticket` by its actual trigger.

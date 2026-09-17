@@ -261,7 +261,7 @@ reusing this repo outside personal use.
 - `handoff` — compacts the current conversation into a handoff document for another
   agent to pick up
 
-**Folded in from a personal `quext-skills` bundle** (Jira/GitHub-specific `/demo`,
+**Folded in from a prior personal skills bundle** (Jira/GitHub-specific `/demo`,
 `/epic`, `/ticket` skills built for one employer's stack — Atlassian MCP, Lovable
 prototyping, GitHub Copilot review, a feature-branch-per-epic convention). Rather than
 vendor three more competing skills, their mechanisms were folded into the existing

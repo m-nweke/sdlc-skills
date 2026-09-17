@@ -1,6 +1,6 @@
 # Grounded-citation mode
 
-Source: adapted from Quext's `/demo` skill (`quext-skills/demo/SKILL.md`), which pairs a
+Source: adapted from a prior personal skills bundle's `/demo` skill, which pairs a
 source-grounded Lovable prototype with a Jira epic where every claim cites code.
 
 The base `to-spec` template deliberately omits file paths and snippets from
