@@ -22,7 +22,7 @@ When in doubt, take the simple path.
 Decompose the question into 2 to 4 exploration angles, each a distinct slice of the subsystem. Spawn all explorers in a single message using the Agent tool with `run_in_background: true`:
 
 - `subagent_type`: `"Explore"` (read-only by definition)
-- `model`: `"haiku"` (fast, cheap)
+- `model`: cheap tier, `"haiku"` (tiers per `fan-out-fan-in`)
 
 Each explorer gets the prompt in `references/explorer-prompt.md` with its angle filled in. Then go to Step 3.
 
@@ -31,7 +31,7 @@ Each explorer gets the prompt in `references/explorer-prompt.md` with its angle 
 Spawn one Agent that explores and explains in one pass:
 
 - `subagent_type`: `"claude"` (or omit for default)
-- `model`: `"fable"`
+- `model`: strong tier, `"fable"`
 
 Build its prompt from `references/explainer-prompt.md` without the explorer-findings section. Go to Step 4.
 
@@ -40,7 +40,7 @@ Build its prompt from `references/explainer-prompt.md` without the explorer-find
 Once all explorers have returned, spawn one Agent to synthesize their findings into one explanation:
 
 - `subagent_type`: `"claude"`
-- `model`: `"fable"`
+- `model`: strong tier, `"fable"`
 
 Build its prompt from `references/explainer-prompt.md` with every explorer's findings filled in.
 

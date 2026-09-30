@@ -105,21 +105,58 @@ way gate-automation trust gets built, not assumed into existence.
 ## Quick start
 
 1. Clone this repo somewhere permanent (not a temp directory).
-2. Symlink what you want into Claude Code's skills/agents directories:
+2. Run the installer. It symlinks, so a `git pull` updates every host at once:
    ```bash
-   for skill in sdlc-skills/skills/*/; do
-     name=$(basename "$skill")
-     ln -s "$(pwd)/$skill" ~/.claude/skills/"$name"
-   done
-   for agent in sdlc-skills/agents/*.md; do
-     name=$(basename "$agent")
-     ln -s "$(pwd)/$agent" ~/.claude/agents/"$name"
-   done
+   ./install.sh          # Claude Code and Codex
+   ./install.sh claude   # Claude Code only
+   ./install.sh codex    # Codex only
    ```
-   (Swap `~/.claude` for `~/.claude-personal` or wherever `CLAUDE_CONFIG_DIR` points, if
-   you keep separate personal/work configs — this repo is symlinked into both on the
-   machine it was built on.)
-3. In a Claude Code session, invoke a pipeline entry point by name — see below.
+   Claude Code gets `skills/*` in `$CLAUDE_CONFIG_DIR/skills` (default `~/.claude`) and
+   `agents/*.md` in `…/agents`. Run it once per config dir if you keep separate
+   personal/work configs (`CLAUDE_CONFIG_DIR=~/.claude-personal ./install.sh claude`).
+3. Invoke a pipeline entry point by name (see below): type it in Claude Code, or `$sdlc-new-feature`
+   in Codex.
+
+## Using with Codex
+
+The skills are the same files on both hosts. There is no Codex fork to keep in sync. Codex
+reads the same `SKILL.md` format, and `./install.sh codex` adds the rest:
+
+- **Skills** are linked into `~/.agents/skills/`, where Codex discovers user-level skills.
+  Invoke one with `$skill-name` or `/skills`.
+- **Agents**: `agents/*.md` are generated into Codex custom agents at `codex/agents/*.toml`
+  and linked into `$CODEX_HOME/agents/` (default `~/.codex`).
+- **Tool vocabulary**: the skills name Claude Code tools (`AskUserQuestion`, the Agent tool,
+  `haiku`/`sonnet`/`opus`, `CLAUDE.md`, `mcp__claude-in-chrome__*`, …).
+  [`codex/AGENTS.md`](codex/AGENTS.md) is a translation table that the installer writes into
+  `~/.codex/AGENTS.md` between markers, leaving the rest of that file alone. Codex then
+  swaps each Claude term for its equivalent: `spawn_agent` for sub-agents, reasoning effort
+  in place of model tier, `AGENTS.md` in place of `CLAUDE.md`, and so on. The skill text stays
+  identical.
+- **Invocation policy**: `disable-model-invocation: true` in a `SKILL.md` is mirrored into
+  that skill's `agents/openai.yaml` as `policy.allow_implicit_invocation: false`. The two hosts
+  agree on which skills can fire on their own.
+
+Claude Code files are the source of truth. After editing a skill's frontmatter or anything in
+`agents/`, run `scripts/sync-codex.py` to regenerate the Codex files
+(`scripts/sync-codex.py --check` exits non-zero if they're stale, which makes it CI-friendly).
+Don't hand-edit `codex/agents/*.toml` or the `policy:` block of an `openai.yaml`.
+
+Differences that remain:
+- `interrogate` gets its adversarial signal from *model* diversity (four Claude models). On
+  Codex it runs as multiple reviewers on one model family at different reasoning efforts, so
+  its consensus signal is weaker.
+- `design-review` needs a browser-automation MCP. Configure one in Codex (Playwright, Chrome
+  DevTools, …), or it falls back to `design-audit.mjs`.
+- `swarm`'s `environment: "cloud"` workers run locally.
+- Codex's default `agents.max_depth = 1` stops a subagent from spawning its own. The
+  pipeline's phase-orchestrators need that to split Implement into per-ticket agents (Claude
+  Code allows 3 layers by default). Set it in `~/.codex/config.toml`:
+  ```toml
+  [agents]
+  max_depth = 3
+  ```
+  Without it, phase-orchestrators fall back to working their sub-tasks one after another.
 
 ## Using the pipeline
 
@@ -227,7 +264,10 @@ reusing this repo outside personal use.
   to warrant several parallel branches instead of one serial pass. Fills the slot the ECC
   `parallel-execution-optimizer` catalogue entry was left unvendored for (see the affaan-m/ECC
   note below) — this is that pattern actually implemented, adapted to this repo's model-per-step
-  convention rather than vendored as-is.
+  convention rather than vendored as-is. It also holds the repo's one **model-tier** table
+  (cheap/standard/strong → Claude model and Codex reasoning effort), a fixed branch-report
+  format, and the rule for sizing N (one branch per natural slice, capped at 6). `swarm` covers
+  the other shape — workers that write, race each other, or run in the cloud.
 
 **Vendored from [benjaminstelzer/scoville-*](https://github.com/benjaminstelzer):**
 - `scoville-research` — evidence-first research; extended with background-agent
@@ -422,8 +462,11 @@ stack — never audit-straight-to-fix inside the pipeline, even though the skill
 capable of that in one pass standalone. The full sequencing for both directions lives
 in `sdlc-pipeline`'s "prototypes before direction" section, not duplicated here.
 
-**Every skill in this repo is model-invoked — nothing sets `disable-model-invocation`.**
-That's a deliberate, repo-wide policy, not just a fix for one broken chain: a skill
+**Every skill in the pipeline and its delegation chains is model-invoked.** The only skills
+that set `disable-model-invocation: true` are standalone tools no other skill here calls:
+`blast-radius`, `how`, `interrogate`, `recall`, `reflect`, `show-me-your-work`, `swarm`,
+`unslop`, and `why`. (`recall` hands work to `why`'s investigators by following its roster,
+not by invoking it.) The rule for the rest is deliberate, not just a fix for one broken chain: a skill
 flagged `disable-model-invocation: true` can't be reached through the Skill tool by
 *any* caller, including another skill, only typed directly by a human. This repo relies
 on skills invoking skills throughout — `sdlc-pipeline` delegating into every phase,

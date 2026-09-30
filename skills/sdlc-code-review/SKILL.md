@@ -13,23 +13,32 @@ the specialists a change might also need, so nothing gets re-derived ad hoc each
 A fixed point, branch, or PR the user named; otherwise the current uncommitted diff if
 one exists. Ask if genuinely ambiguous.
 
-## 2 — Run the core review
+## 2 — Decide the lenses
 
-Call the Skill tool with `scoville-code-anti-ai-slop`, framed as a review of the pinned
-target. This runs its two-axis Standards+Spec mechanism: Standards carries the Fowler
-smell baseline plus the Over-Built Solution check (the Ponytail priority ladder — skip,
-reuse, built-in, only then custom); Spec checks the diff against the originating issue
-or spec.
+Always: the **core review** — `scoville-code-anti-ai-slop`, framed as a review of the pinned
+target. This runs its two-axis Standards+Spec mechanism: Standards carries the Fowler smell
+baseline plus the Over-Built Solution check (the Ponytail priority ladder — skip, reuse, built-in,
+only then custom); Spec checks the diff against the originating issue or spec.
 
-## 3 — Fan out when the change warrants it
+Add a specialist when the change warrants it:
 
-- Touches UI or rendered output → also call `scoville-ui-anti-ai-slop`.
+- Touches UI or rendered output → `scoville-ui-anti-ai-slop`.
 - Hits High risk per scoville-code-anti-ai-slop's risk state (auth, payments, secrets,
-  migrations, destructive behavior, live systems) → also call `security-review`. Once
-  High is hit this is mandatory, not optional.
-- The Standards axis surfaces a real shallow-module or deepening concern, not just a
-  local smell → note it as a candidate for `improve-codebase-architecture`. Don't run
-  that skill automatically; it owns its own report-and-grill flow the user opts into.
+  migrations, destructive behavior, live systems) → `security-review`. Once High is hit this is
+  mandatory, not optional. Judge risk from the diff's paths and content before spawning, not
+  after the core review returns — waiting serializes the one lens that matters most.
+
+## 3 — Run them in parallel
+
+The lenses are independent reads of the same diff. With one lens, run it directly. With two or
+more, spawn one agent per lens in the same turn (standard tier; strong for `security-review`),
+each told to invoke its skill against the pinned target and return findings grouped under that
+skill's own axes. Don't use `fan-out-fan-in` — there's nothing to reconcile, the axes stay
+separate (step 4).
+
+The Standards axis may surface a real shallow-module or deepening concern, not just a local
+smell → note it as a candidate for `improve-codebase-architecture`. Don't run that skill
+automatically; it owns its own report-and-grill flow the user opts into.
 
 ## 4 — Aggregate
 

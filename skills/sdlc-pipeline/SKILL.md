@@ -214,7 +214,17 @@ whether it's ballooning can tally its own accumulated file reads and tool output
   returning *one* consolidated artifact and summary to you. You still only see one report either
   way; the decomposition happens a level down. Judge this from scope up front (file count, ticket
   count, breadth of concern) — a task that's "one focused thing" fits in an agent; a task that's
-  "several of those" doesn't.
+  "several of those" doesn't. If the host refuses a nested spawn (Codex's default `agents.max_depth = 1`
+  does), the phase-orchestrator works its sub-tasks one after another instead, writing each one's
+  result to its own file under `docs/pipeline/<slug>/` before starting the next, and says so in
+  its report.
+- **Implement runs in batches, not one ticket at a time.** When `to-tickets` produced the plan,
+  the Implement phase-orchestrator schedules from it: the first batch is every ticket with no open
+  blocker, plus any accepted parallel candidate. Tickets in one batch that the plan marks
+  file-disjoint run in parallel, one sub-agent each, in its own git worktree; tickets that share
+  files run one after another. After each batch, it merges the batch's branches, runs the tests
+  covering the touched paths, and only then starts the next batch — a batch whose merge or tests
+  fail stops there and reports, it doesn't carry on. The run manifest records the batches.
 - **Trigger 1 — context budget.** Upfront judgment misses sometimes: a task looks scoped and then
   sprawls once the phase-orchestrator is actually inside it. Every prompt must carry this
   instruction, verbatim in spirit: *watch proxies for rising context use — many files read, many
@@ -293,15 +303,15 @@ through either path produces the same comment discipline.
 
 ## Model selection
 
-Pick a `model` for each phase-orchestrator rather than leaving every phase on one default — the Agent
-tool takes it directly:
+Pick a tier for each phase-orchestrator rather than leaving every phase on one default. Tiers map to
+models in `fan-out-fan-in`'s **Model tiers** table, the one definition for the repo:
 
 - **Mechanical or narrow** (formatting an already-agreed ticket breakdown, a small config fix, a
-  well-understood bug triage) — `haiku`.
+  well-understood bug triage) — cheap (`haiku`).
 - **Typical phase work** (most Discovery/Research/Design/Plan/Implement work — running a skill
-  end-to-end against a clear brief) — `sonnet`, or omit to inherit the session default.
+  end-to-end against a clear brief) — standard (`sonnet`), or omit to inherit the session default.
 - **High-judgment or high-stakes** (architecture decisions in Plan or `harden`, `security-review`,
-  charting a `large` effort with `wayfinder`) — `opus`.
+  charting a `large` effort with `wayfinder`) — strong (`opus`).
 
 Treat this as a default, not a lock-in — a stated user preference always wins. Record which model
 ran each phase in the run manifest alongside the agent count, so a mismatch (a `haiku` agent

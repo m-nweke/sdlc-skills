@@ -55,7 +55,7 @@ Minimal, per the rule above.
 
 Enumerate **every producer and consumer of that representation**, not just the call site the ticket named — `new X()`, `X.builder()`, MapStruct `*Mapper` methods, `objectMapper.convertValue(..., X.class)`, Jackson entry points, and every read site.
 
-**Fan this out.** Once you've listed the construction/consumption paths, load `fan-out-fan-in` and dispatch one sub-agent per path (or per small cluster of paths in the same file) to answer, independently: *what does this emit/read for the field I just changed?* A path that emits nothing is a finding, not a default. Reconcile the results yourself into one list before moving on — don't let a sub-agent's "looks fine" stand without you having seen the line.
+**Fan this out.** Once you've listed the construction/consumption paths, answer any path a single `grep` or file read settles yourself first. For the rest, load `fan-out-fan-in`: cluster paths by file or module to at most 6 branches on the cheap tier, each answering the same fixed question — *what does this emit/read for the field I just changed?* — and quoting the exact line as evidence. A path that emits nothing is a finding, not a default. Merge inline: read the quoted lines rather than trusting a branch's "looks fine", and open the file yourself for any path a branch marked low-confidence or left in Gaps.
 
 Three things make these misses invisible, so don't wait for a signal: MapStruct doesn't error on an unmapped target; the missing value is usually `null`, which often has a plausible meaning in the new contract; and nothing fails at compile or run time. Silence is not evidence the other paths are fine.
 
@@ -80,12 +80,12 @@ For a bug, the test should fail before the fix and pass after — show both runs
 
 ## 6 — Self-review the diff
 
-**Run these two lenses over the diff in parallel** — they're independent reads of the same code, not a sequential pipeline:
+Run `sdlc-code-review` on the diff against the ticket. It owns the parallel lenses — correctness and Standards+Spec via `scoville-code-anti-ai-slop`, plus UI and security specialists when the diff warrants them — so this step doesn't define its own. Add two things to its brief:
 
-- `code-review` for correctness. Also re-check the paths you didn't touch but could have broken — self-introduced regressions in adjacent device types have slipped through before.
-- The repo's own vetted vocabulary — `codebase-design` (seams, leverage, locality, the deletion test) and `scoville-code-anti-ai-slop` (no premature abstraction, no scope creep, the Ponytail ladder) — the same second pass `sdlc-pipeline` runs before a Plan/Implement gate.
+- Re-check the paths you didn't touch but could have broken — self-introduced regressions in adjacent device types have slipped through before.
+- Apply `codebase-design`'s vocabulary (seams, leverage, locality, the deletion test) in the Standards lens — the same second pass `sdlc-pipeline` runs before a Plan/Implement gate.
 
-Load `fan-out-fan-in` and dispatch one sub-agent per lens, then reconcile the two result sets yourself. Fix what's real, say what you dismissed and why. Name any real concern in the PR description or in conversation rather than smoothing it over; not every finding blocks the PR, but an unnamed one can't be weighed.
+Reconcile its per-axis report yourself. Fix what's real, say what you dismissed and why. Name any real concern in the PR description or in conversation rather than smoothing it over; not every finding blocks the PR, but an unnamed one can't be weighed.
 
 ## 7 — Commit
 
@@ -129,7 +129,7 @@ The artifact is private on publish. Say so when handing over the link, so the us
 - Representation changes swept across every producer, with the scope stated.
 - Acceptance criteria met, each with a stated verification.
 - Lint and scoped tests pass, output seen.
-- Self-review run (`code-review`, plus `codebase-design`/`scoville-code-anti-ai-slop` judgment pass); findings fixed or consciously dismissed.
+- Self-review run (`sdlc-code-review`, with the `codebase-design` pass in its Standards lens); findings fixed or consciously dismissed.
 - PR open on the right base, description in-format, screenshots for visual work.
 - Copilot threads all resolved, each fixed or dismissed with a reason.
 - Jira updated and rendering correctly.
