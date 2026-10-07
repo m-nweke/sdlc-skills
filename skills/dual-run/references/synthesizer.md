@@ -40,13 +40,16 @@ One voice, no redundancy, nothing that says where an item came from. Where the d
 pick the better-supported position and note the rejected alternative in the ledger, not in the
 artifact. Don't pad: if both drafts include something unnecessary, drop it from both.
 
-- `draft` mode: write `{dir}/final.md`, then publish it as a Claude Doc (load the docs skill or the
-  docs connector's guide first, per its own instructions), titled `{doc_title}`. If `{doc_url}` is
-  set, this is a revision — update that doc rather than creating a new one.
+- `draft` mode: write `{dir}/final.md`. Publishing is `{publish}`:
+  - `doc` — publish it as a Claude Doc (load the docs skill or the docs connector's guide first, per
+    its own instructions), titled `{doc_title}`. If `{doc_url}` is set, this is a revision — update
+    that doc rather than creating a new one.
+  - `queue` — don't publish (you have no docs connector here); the orchestrator queues `final.md`
+    and your report's artifact link is its path.
 - `code` mode: choose the better worktree as the base, port specific improvements from the other
   as separate commits, run the tests covering the touched paths, and leave the result on branch
   `{merged_branch}`. Write `{dir}/final.md` summarizing the change for the gate (what it does, test
-  results, what was ported from the non-base draft) and publish that as the doc.
+  results, what was ported from the non-base draft) and publish or queue that, per `{publish}`.
 
 ## 3. Score it — `{dir}/synthesis.json`
 

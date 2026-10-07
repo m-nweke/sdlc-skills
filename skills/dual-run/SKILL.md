@@ -1,6 +1,6 @@
 ---
 name: dual-run
-description: Run one task through Sonnet and Codex (gpt-6.1-sol) in parallel from the identical prompt, then have a blind Opus synthesizer merge the best of both into one non-redundant artifact and score which model contributed what. Mechanism used by sdlc-pipeline for every phase; also usable directly for any task worth a second model's blind spots ("dual-run this", "get both models on this").
+description: Run one task through Sonnet and Codex (gpt-6.1-sol, or gpt-6-sol when Codex drives) in parallel from the identical prompt, then have a blind Opus synthesizer merge the best of both into one non-redundant artifact and score which model contributed what. Mechanism used by sdlc-pipeline for every phase; also usable directly for any task worth a second model's blind spots ("dual-run this", "get both models on this").
 ---
 
 # Dual run
@@ -25,6 +25,36 @@ Workers never see each other's output. The synthesizer never learns which label 
 until the record is written — it's Claude judging Claude against Codex, so blinding is what keeps
 the scorecard honest. (Style can still give a draft away; the synthesizer is told not to guess and
 not to weigh style.)
+
+## Drivers
+
+The run can be driven from either host. Same steps, same worker contract, same blind Opus judge
+(so verdicts stay comparable); what changes is how each role is launched:
+
+| Role | Claude-driven (Claude Code session) | Codex-driven (`codex -p sdlc-driver`) |
+| --- | --- | --- |
+| Orchestrator | Opus, the session | `gpt-6.1-sol`, effort `medium`, the session |
+| Claude worker | Sonnet, Agent tool, `run_in_background` | Sonnet, `scripts/claude-run.sh --model sonnet` |
+| Codex worker | `gpt-6.1-sol`, `scripts/codex-run.sh` | `gpt-6-sol`, `scripts/codex-run.sh --model gpt-6-sol` |
+| Synthesizer | Opus, Agent tool | Opus, `scripts/claude-run.sh --model opus` |
+| Worker relays | `SendMessage` (Sonnet), `codex-run.sh --resume` | `claude-run.sh --resume <session_id>`, `codex-run.sh --resume` |
+| Sonnet/Opus cost | From the Agent tool's result | From `meta.json` beside each `claude-run.sh` output |
+| User questions | `AskUserQuestion` | The structured-question convention in `~/.codex/AGENTS.md` |
+| Merged artifact | Published as a Claude Doc | `final.md`, queued for publishing (below) |
+
+Codex-driven runs use the same `--effort` tier logic for the `gpt-6-sol` worker. `claude-run.sh`
+auto-accepts edits inside `--cwd` and runs Bash only inside Claude Code's sandbox (writes limited
+to `--cwd`), matching the boundary `codex-run.sh` gives a Codex worker.
+
+**Launch both workers at once** from a Codex driver with one shell call:
+`( claude-run.sh … & codex-run.sh … & wait )`. Each writes its own `meta.json` and `last.md`.
+
+**No Claude Docs from Codex.** Headless Claude has no claude.ai connectors. A Codex-driven run
+writes `final.md` and appends one line per artifact to `<run_dir>/publish-queue.jsonl`:
+`{"phase": "plan", "subtask": "spec", "attempt": 1, "path": "<dir>/final.md", "title": "<doc title>"}`.
+After a gate approves it, the approved copy is `approved.md`, written by copying `final.md` (no export
+step needed). The next Claude session publishes the queue with `publish-run` — Claude Docs stay
+the record, just later.
 
 ## Inputs
 
@@ -98,8 +128,10 @@ Count each worker's relays; the scorecard records them.
 
 ## 4. Synthesize (blind)
 
-Spawn the synthesizer: Agent tool, `model: "opus"`, prompt = the template in
-`references/synthesizer.md` with its placeholders filled. It writes the merged artifact, a
+Spawn the synthesizer on Opus — Agent tool with `model: "opus"` when Claude drives,
+`claude-run.sh --model opus --cwd <project root> --out <dir>/synth` when Codex drives — with the
+template in `references/synthesizer.md`, placeholders filled, as its prompt. Set `{publish}` to
+`doc` when Claude drives and `queue` when Codex drives. It writes the merged artifact, a
 provenance ledger, and `<dir>/synthesis.json`, then reports ≤12 lines: the artifact link, the
 blind winner and why, concerns for the gate, anything it couldn't resolve between the drafts.
 
@@ -113,13 +145,15 @@ merged branch — it never pastes two implementations together.
 <sdlc-skills>/scripts/scorecard.py compose --synthesis <dir>/synthesis.json --key <dir>/key.json \
   --project <project> --run <slug> --kind <kind> --size <size> --phase <phase> --subtask <subtask> \
   --attempt <n> --codex-meta <dir>/<C label>/codex/meta.json --codex-effort <effort> \
-  --sonnet-tokens <from the Agent result> --sonnet-duration <seconds> --sonnet-relays <k> \
-  --synth-tokens <from the synthesizer's Agent result> \
+  --driver claude|codex --codex-model <gpt-6.1-sol | gpt-6-sol> \
+  [--sonnet-meta <dir>/<S label>/claude/meta.json --synth-meta <dir>/synth/meta.json]  # Codex-driven
+  [--sonnet-tokens N --sonnet-duration S --sonnet-relays K --synth-tokens N]           # Claude-driven
   [--sonnet-status failed | --codex-status failed]
 ```
 
-The Agent tool's result reports each subagent's token use and duration — take Sonnet's and the
-synthesizer's from there. Codex's come from `meta.json`.
+Claude-driven: the Agent tool's result reports each subagent's token use and duration — take
+Sonnet's and the synthesizer's from there. Codex-driven: `claude-run.sh` wrote them to `meta.json`.
+Codex's always come from its `meta.json`.
 
 The user's verdict is recorded at the gate, not here (see `references/scorecard.md`, gate record).
 

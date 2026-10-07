@@ -28,12 +28,24 @@ models cover each other's blind spots now; the scorecard (`~/.sdlc/scorecard.jso
 better at it. Wherever this file says "spawn a phase-orchestrator," read: dual-run that phase's
 prompt — the two workers are the phase-orchestrators, and you only ever see the synthesizer's report.
 
+**Driving from Codex instead.** The same pipeline runs from `codex -p sdlc-driver` (profile
+installed by `./install.sh codex-driver`): the orchestrator is then `gpt-6.1-sol` at `medium` effort,
+the workers are Sonnet (via `scripts/claude-run.sh`) and `gpt-6-sol`, and the synthesizer is
+still a blind Opus (via `claude-run.sh --model opus`). Every rule in this file still applies; where
+a step names a Claude-only mechanism, `dual-run`'s **Drivers** table gives the Codex equivalent.
+Two differences matter: no Claude Docs (artifacts are queued, below), and every scorecard record
+carries `--driver codex`, because its Codex worker is a different model and its numbers must
+not be pooled with Claude-driven runs'.
+
 **Artifacts live in Claude Docs.** The synthesizer publishes each phase's merged artifact as a
 Claude Doc; that doc is the artifact of record, and the gate links to it. Codex contributes a draft
 to every artifact but can't read Claude Docs, so after each Approve, export the approved doc to
 markdown (the docs connector's export) at `<run root>/<slug>/<phase>/approved.md` — later phases'
 prompts point at that snapshot, never at the drafts. If the user edits the doc after approving,
-re-export before the next phase starts.
+re-export before the next phase starts. A Codex-driven run can't reach Claude Docs: it copies
+`final.md` to `approved.md` on Approve and queues the artifact in `<run root>/<slug>/publish-queue.jsonl`;
+`publish-run` publishes the queue from the next Claude session. When a Claude-driven run starts in a
+project whose run root has an unpublished queue, say so and offer `publish-run` before sizing.
 
 **Assume nothing about process.** The user is at a new company; tracker, branch names, PR rules,
 naming standards and where docs belong all come from `company-conventions`, never from this repo's

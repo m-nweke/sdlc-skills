@@ -1,4 +1,5 @@
 export type GroupBy = 'phase' | 'task_type'
+export type Driver = 'all' | 'claude' | 'codex'
 
 export type ModelCol = {
   wins: number
@@ -26,6 +27,7 @@ export type RecentRow = {
   winner: string
   rationale: string
   preferred: string | null
+  driver: string
 }
 
 export type Board = {
@@ -40,6 +42,6 @@ export type Board = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'sdlc-scorecard': { board: Board | null; groupBy: GroupBy; mtime: number }
+    'sdlc-scorecard': { board: Board | null; groupBy: GroupBy; driver: Driver; mtime: number }
   }
 }

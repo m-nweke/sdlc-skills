@@ -6,7 +6,7 @@ default ~/.sdlc/scorecard.jsonl. The sdlc-scorecard mod reads the same file.
 
   scorecard.py add FILE|-          append one phase or gate record (JSON), validated
   scorecard.py compose ...         build + append a phase record from a blind synthesis (A/B) and its key
-  scorecard.py summary [--by phase|task_type] [--project NAME]
+  scorecard.py summary [--by phase|task_type] [--project NAME] [--driver claude|codex]
   scorecard.py path                print the log path
 
 Schema: skills/dual-run/references/scorecard.md
@@ -73,6 +73,15 @@ def add(src):
     print(f"recorded {rec['type']} {rec['id']}")
 
 
+def read_meta(path):
+    return json.load(open(path)) if path and os.path.exists(path) else {}
+
+
+def meta_tokens(meta):
+    u = meta.get("usage", {})
+    return u.get("input_tokens", 0) + u.get("output_tokens", 0)
+
+
 def compose(a):
     """Unblind the synthesizer's A/B output with key.json and add the measured branch costs."""
     syn, key = json.load(open(a.synthesis)), json.load(open(a.key))  # key: {"A": "codex", "B": "sonnet"}
@@ -80,15 +89,23 @@ def compose(a):
         fail("key must map A and B to sonnet and codex")
     unblind = lambda d: {key[k]: v for k, v in d.items()}
     it = syn["items"]
-    meta = json.load(open(a.codex_meta)) if a.codex_meta and os.path.exists(a.codex_meta) else {}
+    meta = read_meta(a.codex_meta)
     usage = meta.get("usage", {})
+    # Codex-driven runs launch Sonnet and Opus through claude-run.sh, which leaves a meta.json;
+    # Claude-driven runs pass the Agent tool's numbers as flags instead.
+    s_meta, o_meta = read_meta(a.sonnet_meta), read_meta(a.synth_meta)
+    sonnet_tokens = meta_tokens(s_meta) if s_meta else a.sonnet_tokens
+    sonnet_duration = s_meta.get("duration_s", 0) if s_meta else a.sonnet_duration
+    sonnet_relays = max(s_meta.get("turns", 1) - 1, 0) if s_meta else a.sonnet_relays
+    synth_tokens = meta_tokens(o_meta) if o_meta else a.synth_tokens
     rec = {
-        "type": "phase", "project": a.project, "run": a.run, "kind": a.kind, "size": a.size,
+        "type": "phase", "driver": a.driver, "project": a.project, "run": a.run, "kind": a.kind, "size": a.size,
         "phase": a.phase, "subtask": a.subtask, "task_type": syn.get("task_type") or a.subtask,
         "attempt": a.attempt, "artifact": syn.get("artifact"),
         "branches": {
-            "sonnet": {"model": "sonnet", "status": a.sonnet_status, "tokens": a.sonnet_tokens,
-                       "duration_s": a.sonnet_duration, "relays": a.sonnet_relays},
+            "sonnet": {"model": "sonnet", "status": a.sonnet_status, "tokens": sonnet_tokens,
+                       "duration_s": sonnet_duration, "relays": sonnet_relays,
+                       "cost_usd": s_meta.get("cost_usd")},
             "codex": {"model": a.codex_model, "effort": a.codex_effort, "status": a.codex_status,
                       "tokens": usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
                       "input_tokens": usage.get("input_tokens", 0),
@@ -97,7 +114,7 @@ def compose(a):
                       "duration_s": meta.get("duration_s", 0), "relays": max(meta.get("turns", 1) - 1, 0)},
         },
         "synthesis": {
-            "model": "opus", "tokens": a.synth_tokens, "blind_key": key,
+            "model": "opus", "tokens": synth_tokens, "blind_key": key,
             "items": {"total": it["total"], "both": it["both"], "synth_added": it["synth_added"],
                       key["A"] + "_only": it["A_only"], key["B"] + "_only": it["B_only"]},
             "dropped": unblind(syn.get("dropped", {})), "errors": unblind(syn.get("errors", {})),
@@ -116,8 +133,10 @@ def compose(a):
     print(f"recorded phase {rec['id']}: winner {rec['synthesis']['winner']}")
 
 
-def summary(by, project):
-    recs = [r for r in load() if not project or r.get("project") == project]
+def summary(by, project, driver):
+    # Records from before drivers existed were all Claude-driven.
+    recs = [r for r in load() if (not project or r.get("project") == project)
+            and (not driver or r.get("driver", "claude") == driver or r["type"] == "gate")]
     # A later record with the same id (a Revise's new attempt) supersedes the earlier one.
     gates = {r["id"]: r for r in recs if r["type"] == "gate"}
     phases = {r["id"]: r for r in recs if r["type"] == "phase"}
@@ -158,13 +177,17 @@ def main():
     s = sub.add_parser("summary")
     s.add_argument("--by", choices=["phase", "task_type"], default="phase")
     s.add_argument("--project")
+    s.add_argument("--driver", choices=["claude", "codex"])
     c = sub.add_parser("compose")
     for k in ("synthesis", "key", "project", "run", "phase", "subtask"):
         c.add_argument(f"--{k}", required=True)
     c.add_argument("--kind", default="")
     c.add_argument("--size", default="")
     c.add_argument("--attempt", type=int, default=1)
+    c.add_argument("--driver", choices=["claude", "codex"], default="claude")
     c.add_argument("--codex-meta")
+    c.add_argument("--sonnet-meta")
+    c.add_argument("--synth-meta")
     c.add_argument("--codex-model", default="gpt-6.1-sol")
     c.add_argument("--codex-effort", default="medium")
     c.add_argument("--codex-status", default="done", choices=["done", "relay", "failed", "skipped"])
@@ -178,7 +201,7 @@ def main():
     elif args.cmd == "compose":
         compose(args)
     elif args.cmd == "summary":
-        summary(args.by, args.project)
+        summary(args.by, args.project, args.driver)
     else:
         print(PATH)
 

@@ -3,6 +3,8 @@
 #   ./install.sh            both hosts
 #   ./install.sh claude     Claude Code only ($CLAUDE_CONFIG_DIR, default ~/.claude)
 #   ./install.sh codex      Codex only (~/.agents/skills, $CODEX_HOME default ~/.codex)
+#   ./install.sh codex-driver  opt-in: the `codex -p sdlc-driver` profile, plus rules that let
+#                           Codex run the worker scripts without asking (outside its sandbox)
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")" && pwd)"
@@ -43,9 +45,18 @@ install_codex() {
   echo "Codex: skills linked into $skills, agents into $home/agents, translation block in $agents_md"
 }
 
+install_codex_driver() {
+  local home="${CODEX_HOME:-$HOME/.codex}"
+  mkdir -p "$home/rules"
+  cp "$REPO/codex/sdlc-driver.config.toml" "$home/sdlc-driver.config.toml"
+  sed "s#__REPO__#$REPO#g" "$REPO/codex/sdlc-skills.rules" > "$home/rules/sdlc-skills.rules"
+  echo "Codex driver: profile at $home/sdlc-driver.config.toml (codex -p sdlc-driver), rules at $home/rules/sdlc-skills.rules"
+}
+
 case "$TARGET" in
   claude) install_claude ;;
   codex)  install_codex ;;
   all)    install_claude; install_codex ;;
-  *) echo "usage: $0 [claude|codex|all]" >&2; exit 1 ;;
+  codex-driver) install_codex_driver ;;
+  *) echo "usage: $0 [claude|codex|all|codex-driver]" >&2; exit 1 ;;
 esac

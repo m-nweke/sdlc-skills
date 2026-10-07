@@ -1,12 +1,13 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface as Api, Register } from 'claude-code'
 
-import type { Board, GroupBy, GroupRow } from '../types'
+import type { Board, Driver, GroupBy, GroupRow } from '../types'
 import { aggregate, leader, parse } from './aggregate'
 
 const PANE = 'sdlc-scorecard'
 const board = atom({ plugin: 'sdlc-scorecard', key: 'board' } as const, null)
 const groupBy = atom({ plugin: 'sdlc-scorecard', key: 'groupBy' } as const, 'phase')
+const driver = atom({ plugin: 'sdlc-scorecard', key: 'driver' } as const, 'all')
 const mtime = atom({ plugin: 'sdlc-scorecard', key: 'mtime' } as const, 0)
 
 async function logPath($: Api): Promise<string> {
@@ -20,6 +21,7 @@ async function refresh($: Api, force = false): Promise<void> {
   const path = await logPath($)
   const now = await $.clock.now()
   const by = await read($, groupBy)
+  const drv = await read($, driver)
   const stat = await $.fs.stat(path).catch(() => null)
   if (!stat) {
     await update($, board, () => ({ ...empty(path, now), error: 'No scorecard yet. It fills as dual runs complete.' }))
@@ -29,7 +31,7 @@ async function refresh($: Api, force = false): Promise<void> {
   try {
     const text = await $.fs.read(path)
     await update($, mtime, () => stat.mtimeMs)
-    await update($, board, () => aggregate(parse(text), by, path, now))
+    await update($, board, () => aggregate(parse(text), by, path, now, drv))
   } catch (err) {
     await update($, board, () => ({ ...empty(path, now), error: `Couldn't read ${path}: ${String(err)}` }))
   }
@@ -83,6 +85,18 @@ export const register: Register = on => {
     const { Box, Text, Button } = $.ui.resolve(e)
     const b = await read($, board)
     const by = await read($, groupBy)
+    const drv = await read($, driver)
+    const NEXT_DRIVER: Record<Driver, Driver> = { all: 'claude', claude: 'codex', codex: 'all' }
+    const driverButton = (
+      <Button
+        key="driver"
+        label={`Driven by: ${drv}`}
+        onPress={async () => {
+          await update($, driver, () => NEXT_DRIVER[drv])
+          await refresh($, true)
+        }}
+      />
+    )
     const toggle = (
       <Button
         key="group"
@@ -99,6 +113,7 @@ export const register: Register = on => {
         <Box flexDirection="column">
           <Text dimColor>{b?.error ?? 'No dual runs recorded yet.'}</Text>
           <Text dimColor>{b?.path ?? ''}</Text>
+          {b && !b.error && driverButton}
         </Box>
       )
     }
@@ -134,6 +149,8 @@ export const register: Register = on => {
           <Text color="claude">■ Sonnet  </Text>
           <Text color="suggestion">■ Codex  </Text>
           {toggle}
+          <Text> </Text>
+          {driverButton}
         </Box>
         <Text> </Text>
         <Text dimColor>
@@ -144,6 +161,7 @@ export const register: Register = on => {
         <Text dimColor>
           Total tokens: Sonnet {k(b.totals.sonnetTokens)} · Codex {k(b.totals.codexTokens)} · Opus synthesis {k(b.totals.opusTokens)}
         </Text>
+        <Text dimColor>{drv === 'all' ? 'Mixing drivers: Codex-driven runs use gpt-6-sol, Claude-driven gpt-6.1-sol. Filter by driver to compare like with like.' : ''}</Text>
         <Text dimColor>"you agree": your pick at the gate matched the blind synthesizer's winner. "→ X only?": 8+ runs, 75%+ wins — review before routing.</Text>
         <Text> </Text>
         <Text bold>Recent</Text>
@@ -151,6 +169,7 @@ export const register: Register = on => {
           <Text key={r.id}>
             <Text color={r.winner === 'sonnet' ? 'claude' : r.winner === 'codex' ? 'suggestion' : 'subtle'}>{cell(r.winner, 7)}</Text>
             <Text>{cell(r.id, 34)} </Text>
+            <Text dimColor>{r.driver === 'codex' ? 'via Codex · ' : ''}</Text>
             <Text dimColor>{r.preferred ? `you: ${r.preferred} · ` : ''}{r.rationale}</Text>
           </Text>
         ))}

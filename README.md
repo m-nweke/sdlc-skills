@@ -266,6 +266,18 @@ blind spots now, and every run builds the evidence for routing each kind of task
   rules, naming, where docs live) with rules recorded in `~/.sdlc/conventions.md` and per-project
   `.sdlc/conventions.md`, established by asking you the first time a step needs one.
 
+**Drive it from either tool.** From Claude Code, the orchestrator is Opus and the Codex worker is
+`gpt-6.1-sol`. From Codex, run `./install.sh codex-driver` once, then `codex -p sdlc-driver` and
+`$sdlc-new-feature` (or any entry point): the orchestrator is `gpt-6.1-sol` at medium effort, the
+workers are Sonnet (`scripts/claude-run.sh`, headless Claude with sandboxed Bash) and `gpt-6-sol`,
+and the synthesizer is still a blind Opus, so verdicts stay comparable. Headless Claude can't
+reach Claude Docs, so a Codex-driven run queues its artifacts and `publish-run` publishes them from
+the next Claude session. The `codex-driver` install adds Codex rules that let it launch the three
+worker scripts without asking; those commands then run outside Codex's sandbox. Skip that part
+and Codex will ask before each launch instead. Scorecard records carry the driver;
+filter by it (`summary --driver codex`, or the pane's "Driven by" button) rather than pooling
+the two Codex models.
+
 Phases are split into sub-tasks with a `task_type` (`spec`, `ticket-breakdown`, `tests`,
 `implementation`, `review-security`, …) so the scorecard can show "Codex writes better tests,
 Sonnet better specs" rather than one blended verdict per phase. When a task type has 8+ runs and

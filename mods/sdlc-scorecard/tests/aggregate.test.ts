@@ -51,3 +51,15 @@ test('flags a routing candidate only with 8+ runs and a 75% win rate', async () 
   expect(leader(aggregate(many(6, 8), 'phase', '/x', 0).groups[0]!)).toBe('codex')
   expect(leader(aggregate(many(5, 8), 'phase', '/x', 0).groups[0]!)).toBe(null)
 })
+
+test('filters by driver, treating records without one as Claude-driven', async () => {
+  const recs = [
+    phase('r1', 'plan', 'spec', 'sonnet', '2026-10-01'),
+    { ...phase('r2', 'plan', 'spec', 'codex', '2026-10-02'), driver: 'codex' },
+  ]
+  expect(aggregate(recs, 'phase', '/x', 0, 'all').groups[0]!.n).toBe(2)
+  expect(aggregate(recs, 'phase', '/x', 0, 'claude').groups[0]!.sonnet.wins).toBe(1)
+  const codex = aggregate(recs, 'phase', '/x', 0, 'codex')
+  expect(codex.groups[0]!.codex.wins).toBe(1)
+  expect(codex.recent[0]!.driver).toBe('codex')
+})

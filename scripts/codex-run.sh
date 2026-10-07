@@ -4,17 +4,18 @@
 #   events.jsonl full event stream (never read into an orchestrator's context)
 #   meta.json    thread_id, token usage, duration, exit code — what the scorecard records
 #
-#   codex-run.sh --out DIR --cwd DIR --prompt-file FILE [--effort low|medium|high]
+#   codex-run.sh --out DIR --cwd DIR --prompt-file FILE [--model M] [--effort low|medium|high]
 #                [--sandbox read-only|workspace-write] [--schema FILE]
 #   codex-run.sh --out DIR --cwd DIR --resume THREAD_ID --prompt-file FILE   (continue a session)
 set -uo pipefail
 
-out="" cwd="" prompt_file="" effort="medium" sandbox="read-only" schema="" resume=""
+out="" cwd="" prompt_file="" model="" effort="medium" sandbox="read-only" schema="" resume=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --out) out="$2"; shift 2 ;;
     --cwd) cwd="$2"; shift 2 ;;
     --prompt-file) prompt_file="$2"; shift 2 ;;
+    --model) model="$2"; shift 2 ;;
     --effort) effort="$2"; shift 2 ;;
     --sandbox) sandbox="$2"; shift 2 ;;
     --schema) schema="$2"; shift 2 ;;
@@ -31,6 +32,8 @@ mkdir -p "$out"
 args=(--json --skip-git-repo-check -o "$out/last.md"
       -c "model_reasoning_effort=\"$effort\"" -c "sandbox_mode=\"$sandbox\"")
 [ -n "$schema" ] && args+=(--output-schema "$schema")
+# Unset, Codex uses the config default (gpt-6.1-sol here); a Codex-driven run passes gpt-6-sol.
+[ -n "$model" ] && args+=(-m "$model")
 
 start=$(date +%s)
 cd "$cwd" || exit 2

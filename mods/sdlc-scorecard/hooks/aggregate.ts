@@ -1,4 +1,4 @@
-import type { Board, GroupBy, GroupRow, ModelCol, RecentRow } from '../types'
+import type { Board, Driver, GroupBy, GroupRow, ModelCol, RecentRow } from '../types'
 
 // Mirrors scripts/scorecard.py in sdlc-skills: a later record with the same id supersedes the
 // earlier one, and a gate record joins its phase record on that id.
@@ -20,11 +20,14 @@ export function parse(text: string): Rec[] {
   return out
 }
 
-export function aggregate(recs: Rec[], groupBy: GroupBy, path: string, readAt: number): Board {
+// Records from before drivers existed were all Claude-driven.
+const driverOf = (r: Rec): string => r.driver ?? 'claude'
+
+export function aggregate(recs: Rec[], groupBy: GroupBy, path: string, readAt: number, driver: Driver = 'all'): Board {
   const phases = new Map<string, Rec>()
   const gates = new Map<string, Rec>()
   for (const r of recs) {
-    if (r.type === 'phase') phases.set(r.id, r)
+    if (r.type === 'phase' && (driver === 'all' || driverOf(r) === driver)) phases.set(r.id, r)
     else if (r.type === 'gate') gates.set(r.id, r)
   }
 
@@ -85,6 +88,7 @@ export function aggregate(recs: Rec[], groupBy: GroupBy, path: string, readAt: n
       winner: r.synthesis?.winner ?? '?',
       rationale: r.synthesis?.rationale ?? '',
       preferred: gates.get(r.id)?.preferred ?? null,
+      driver: driverOf(r),
     }))
 
   return {
