@@ -1,6 +1,6 @@
 ---
 name: dual-run
-description: Run one task through Sonnet and Codex (gpt-6.1-sol, or gpt-6-sol when Codex drives) in parallel from the identical prompt, then have a blind Opus synthesizer merge the best of both into one non-redundant artifact and score which model contributed what. Mechanism used by sdlc-pipeline for every phase; also usable directly for any task worth a second model's blind spots ("dual-run this", "get both models on this").
+description: Run one task through Sonnet and Codex (gpt-6.1-sol, or gpt-6-sol when Codex drives) in parallel from the identical prompt, then have a blind Opus synthesizer merge the best of both into one non-redundant artifact and score which model contributed what. Mechanism behind sdlc-pipeline's dual mode; also usable directly when both Claude Code and Codex are available for any task worth a second model's blind spots ("dual-run this", "get both models on this").
 ---
 
 # Dual run
@@ -8,6 +8,12 @@ description: Run one task through Sonnet and Codex (gpt-6.1-sol, or gpt-6-sol wh
 One task, two independent workers, one blind synthesis, one scorecard record. The point is each
 model covering the other's blind spots now, and an honest record of who is better at what so the
 flow can later route each kind of task to a single model.
+
+**Needs both tools.** Claude Code and the Codex CLI, both installed, logged in, and allowed on this
+company's code (`company-conventions`, `Pipeline` topic). `sdlc-pipeline` only calls this in its
+`dual` mode, after checking that; called directly, check first (`command -v codex && codex login
+status`, `command -v claude && claude auth status`). If one is missing, say so and run the task on
+the available model alone. Don't half-run a dual run.
 
 This is a mechanism, like `fan-out-fan-in`: it owns *how* a task runs on two models, not what the
 task is. The caller (usually `sdlc-pipeline`'s master orchestrator) supplies the task.

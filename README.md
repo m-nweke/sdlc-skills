@@ -241,9 +241,26 @@ call the underlying skill directly (`diagnosing-bugs`, `frontend-design`, `to-sp
 never compete with those skills for the same request — see
 [Composition notes](#composition-notes).
 
-## Dual-model runs: Claude + Codex on every phase
+## Modes: Claude, Codex, or both
 
-Every pipeline phase now runs on two models. The master orchestrator is Opus; each phase's
+The pipeline doesn't assume which tools you have. Each run is in one of three modes, chosen at
+the start (`sdlc-pipeline` step 0):
+
+| Mode | Needs | How phases run |
+| --- | --- | --- |
+| `claude` | Claude Code | One agent per phase on a tier model (`haiku`/`sonnet`/`opus`); artifacts in Claude Docs |
+| `codex` | Codex | One sub-agent per phase at a tier effort; artifacts as markdown in the run folder |
+| `dual` | Both, logged in | Every phase on Sonnet + Codex, blind Opus merge, scored (below) |
+
+The pipeline checks what's installed and logged in, and which AI tools the company allows on its
+code (recorded under `Pipeline` in the conventions file). Then it runs single-model automatically
+or asks whether you want `dual`, and you can save your answer as the default. You can switch at any
+gate. Start from Claude Code with an entry point (`/sdlc-fix` …), or from Codex with
+`codex -p sdlc-driver` then `$sdlc-fix` (`./install.sh codex-driver` installs that profile).
+
+### Dual mode
+
+In `dual` mode every pipeline phase runs on two models. The master orchestrator is Opus; each phase's
 identical prompt goes to a **Sonnet** worker and a **Codex `gpt-6.1-sol`** worker in parallel,
 neither sees the other, and a **blind Opus synthesizer** (it only sees "Draft A" and "Draft B")
 merges the best of both into one non-redundant artifact. The idea: each model covers the other's
@@ -266,7 +283,7 @@ blind spots now, and every run builds the evidence for routing each kind of task
   rules, naming, where docs live) with rules recorded in `~/.sdlc/conventions.md` and per-project
   `.sdlc/conventions.md`, established by asking you the first time a step needs one.
 
-**Drive it from either tool.** From Claude Code, the orchestrator is Opus and the Codex worker is
+**Drive dual mode from either tool.** From Claude Code, the orchestrator is Opus and the Codex worker is
 `gpt-6.1-sol`. From Codex, run `./install.sh codex-driver` once, then `codex -p sdlc-driver` and
 `$sdlc-new-feature` (or any entry point): the orchestrator is `gpt-6.1-sol` at medium effort, the
 workers are Sonnet (`scripts/claude-run.sh`, headless Claude with sandboxed Bash) and `gpt-6-sol`,
@@ -297,7 +314,7 @@ reusing this repo outside personal use.
 - `sdlc-pipeline`, `sdlc-new-feature`, `sdlc-fix`, `sdlc-redesign`, `sdlc-harden` — the
   shared orchestration engine and its four entry points (see [Using the pipeline](#using-the-pipeline))
 - `dual-run` — one task through Sonnet and Codex in parallel, blind Opus synthesis, scored
-  (see [Dual-model runs](#dual-model-runs-claude--codex-on-every-phase))
+  (see [Dual mode](#dual-mode))
 - `company-conventions` — looks up or establishes (by asking) the current company's process rules
 - `work-ticket` — takes a Jira ticket from paste to reviewed PR in one fast session
   (not the gated pipeline above); composes `diagnosing-bugs` for non-obvious root

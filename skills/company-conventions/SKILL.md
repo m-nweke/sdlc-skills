@@ -57,6 +57,7 @@ Each is a `##` section in the conventions file; record only the ones that have c
 | Definition of done | Tests, coverage, docs, flags, analytics, accessibility, security sign-off |
 | Release | Environments, deploy process, change management, release notes |
 | Security / compliance | Data handling rules, secrets, regulated data, required reviews |
+| Pipeline | Which AI tools may see the company's code (Claude, Codex, both); the default `sdlc-pipeline` mode (`claude`, `codex`, `dual`) |
 | Design | Design system, component library, where designs live |
 
 ## File format

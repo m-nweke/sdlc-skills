@@ -1,5 +1,6 @@
 # Codex profile for driving the sdlc pipeline from Codex: `codex -p sdlc-driver`.
-# Layered on ~/.codex/config.toml. The orchestrator runs on gpt-6.1-sol at medium; its dual-run
+# Layered on ~/.codex/config.toml. The orchestrator runs on gpt-6.1-sol at medium in every mode.
+# In `codex` mode its phase agents are Codex sub-agents at the tier's effort; in `dual` mode its
 # workers are Sonnet (claude-run.sh) and gpt-6-sol (codex-run.sh --model gpt-6-sol), and the blind
 # synthesizer is Opus (claude-run.sh --model opus).
 model = "gpt-6.1-sol"

@@ -19,33 +19,34 @@ can't handle itself (see **Relay protocol** below), and tracking the run. See th
 below and this repo's `README.md` for the full composition rationale of what each phase
 delegates to.
 
-**Run as Opus, and run every phase on two models.** The master orchestrator is the session's Opus.
-Each phase's work goes through `dual-run`: the identical phase prompt goes to a Sonnet worker and a
-Codex (`gpt-6.1-sol`) worker in parallel, neither sees the other, and a blind Opus synthesizer
-merges the best of both into one non-redundant artifact and scores who contributed what. The two
-models cover each other's blind spots now; the scorecard (`~/.sdlc/scorecard.jsonl`, drawn by the
-`sdlc-scorecard` mod) is the evidence for later routing each kind of task to the one model that's
-better at it. Wherever this file says "spawn a phase-orchestrator," read: dual-run that phase's
-prompt — the two workers are the phase-orchestrators, and you only ever see the synthesizer's report.
+**Three modes — pick one per run, never assume one.** The pipeline runs on Claude alone, on Codex
+alone, or on both. Which tool you are is the *host*; step 0 checks what else is available and
+settles the mode before anything runs.
 
-**Driving from Codex instead.** The same pipeline runs from `codex -p sdlc-driver` (profile
-installed by `./install.sh codex-driver`): the orchestrator is then `gpt-6.1-sol` at `medium` effort,
-the workers are Sonnet (via `scripts/claude-run.sh`) and `gpt-6-sol`, and the synthesizer is
-still a blind Opus (via `claude-run.sh --model opus`). Every rule in this file still applies; where
-a step names a Claude-only mechanism, `dual-run`'s **Drivers** table gives the Codex equivalent.
-Two differences matter: no Claude Docs (artifacts are queued, below), and every scorecard record
-carries `--driver codex`, because its Codex worker is a different model and its numbers must
-not be pooled with Claude-driven runs'.
+| Mode | Needs | You (orchestrator) | Phase work | Artifact of record | Scorecard |
+| --- | --- | --- | --- | --- | --- |
+| `claude` | Claude Code | the session (Opus when available) | one Agent per phase, tier model (see **Model selection**) | Claude Doc; markdown if the docs connector isn't connected | not written |
+| `codex` | Codex | the session (`codex -p sdlc-driver`: `gpt-6.1-sol`, `medium`) | one `spawn_agent` per phase, tier effort | markdown in the run root | not written |
+| `dual` | both CLIs installed and logged in | the host's session, as above | `dual-run`: Sonnet + Codex workers, blind Opus synthesis | Claude Doc (Claude host) or markdown queued for publishing (Codex host) | written per sub-task and gate |
 
-**Artifacts live in Claude Docs.** The synthesizer publishes each phase's merged artifact as a
-Claude Doc; that doc is the artifact of record, and the gate links to it. Codex contributes a draft
-to every artifact but can't read Claude Docs, so after each Approve, export the approved doc to
-markdown (the docs connector's export) at `<run root>/<slug>/<phase>/approved.md` — later phases'
-prompts point at that snapshot, never at the drafts. If the user edits the doc after approving,
-re-export before the next phase starts. A Codex-driven run can't reach Claude Docs: it copies
-`final.md` to `approved.md` on Approve and queues the artifact in `<run root>/<slug>/publish-queue.jsonl`;
-`publish-run` publishes the queue from the next Claude session. When a Claude-driven run starts in a
-project whose run root has an unpublished queue, say so and offer `publish-run` before sizing.
+In `dual` mode the identical phase prompt goes to a Sonnet worker and a Codex worker, neither sees
+the other, and a blind Opus synthesizer merges the best of both into one artifact and scores who
+contributed what; the scorecard (`~/.sdlc/scorecard.jsonl`, drawn by the `sdlc-scorecard` mod) is
+the evidence for later routing each kind of task to one model. Which models fill each role, and
+how each is launched from either host, is `dual-run`'s **Drivers** table. In the single-model modes
+none of that applies: one phase-orchestrator per phase, exactly as the rest of this file describes,
+and wherever a step below says "in `dual` mode", skip it.
+
+**Artifacts.** Every mode keeps an approved snapshot at `<run root>/<slug>/<phase>/approved.md`, and
+later phases' prompts point at that snapshot — it's what a Codex worker or a Codex host can read.
+When the artifact of record is a Claude Doc, export it there after each Approve (the docs
+connector's export), and re-export if the user edits the doc before the next phase starts. When
+it's markdown, the phase-orchestrator (or synthesizer) writes `final.md` and the Approve copies it
+to `approved.md`. A Codex-hosted `dual` run also queues each artifact in
+`<run root>/<slug>/publish-queue.jsonl` so `publish-run` can publish it from the next Claude
+session; a `codex`-mode run doesn't, unless the user asks for its artifacts in Claude Docs. When a
+Claude-hosted run starts in a project whose run root has an unpublished queue, say so and offer
+`publish-run` before sizing.
 
 **Assume nothing about process.** The user is at a new company; tracker, branch names, PR rules,
 naming standards and where docs belong all come from `company-conventions`, never from this repo's
@@ -120,11 +121,28 @@ anything else, not a plain-text ask — `kind` has four concrete options to offe
 `slug`, offer 2-3 candidates derived from `request`. Don't guess a slug for something that will
 be referenced across several artifacts.
 
-## 0. Conventions and the run root
+## 0. Mode, conventions and the run root
 
 Before sizing, read the conventions in force (`company-conventions`: project file, then company
 file). Don't ask about every topic now — each phase establishes the ones it needs when it needs
-them — but two are needed before anything runs:
+them — but these are needed before anything runs:
+
+- **Mode** — `claude`, `codex` or `dual` (see **Three modes** above). Settle it in this order:
+  1. **Which tools may see this code?** The conventions' `Pipeline` topic records the AI tools the
+     company allows on its code. A company can bar a vendor, and that settles it whatever is
+     installed. If it isn't recorded, ask once (company-wide) before the first run.
+  2. **What's actually available?** You are the host. Check the other tool:
+     `command -v codex && codex login status` from Claude, or
+     `command -v claude && claude auth status` from Codex. Not installed, not logged in, or not
+     allowed → run in the host's single mode and say so in one line; there's nothing to ask.
+  3. **Both available and allowed** → use the default recorded under `Pipeline` if there is one;
+     otherwise ask with `AskUserQuestion` — `dual` (both models per phase, scored) or the host's
+     single mode (cheaper, about a third of the agents) — and offer to record the answer as the
+     default.
+  Record the mode in the run manifest. The user can change it at any gate (say "switch to
+  single" or "switch to dual" — honor it from the next phase on and note it in the manifest). In
+  `dual` mode, if the other tool fails for a whole sub-task (`dual-run`'s retry also failed), say so
+  and ask whether to continue in single mode.
 
 - **Run root** — where run state, worker drafts and worktrees go. Default `<project>/.sdlc/runs/`,
   kept out of the company's repo via `.git/info/exclude`. It must be inside the project, because
@@ -132,8 +150,10 @@ them — but two are needed before anything runs:
   artifacts belong somewhere else in the repo (`Docs` topic), the run manifest can live there, but
   drafts and worktrees stay under `.sdlc/`.
 - **Project name** — what the scorecard calls this project (default: the repo's directory name).
+  Only needed in `dual` mode.
 
-If either isn't recorded yet, ask once and record it in the project conventions file.
+If the run root or project name isn't recorded yet, ask once and record it in the project
+conventions file.
 
 ## 1. Classify size
 
@@ -184,27 +204,31 @@ Create (or append to, if `<run root>/<slug>/manifest.md` already exists) a run m
 ```markdown
 # Pipeline: <slug>
 
-**Kind:** <feature|fix|redesign>  **Size:** <trivial|small|standard|large>
+**Kind:** <feature|fix|redesign>  **Size:** <trivial|small|standard|large>  **Mode:** <claude|codex|dual>
 **Request:** <raw ask>
 
-| Phase | Sub-task | Agent(s) spawned | Winner (blind) | User preferred | Status | Artifact | Gate decision |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Discovery | requirements | S1 C1 O1 | codex | merged | done | <doc link> | Approved |
-| ... | | | | | | | |
+| Phase | Sub-task | Agent(s) spawned | Model(s) | Status | Artifact | Gate decision |
+| --- | --- | --- | --- | --- | --- | --- |
+| Discovery | requirements | 1 | sonnet | done | <doc link or approved.md> | Approved |
+| ... | | | | | | |
 ```
 
-**Agent(s) spawned** counts per model: `S` Sonnet workers, `C` Codex sessions (a resume counts as
-a relay, not a new session), `O` Opus synthesizers — e.g. `S2 (1 input-relay) C1 O1`.
+In `dual` mode, add two columns after **Model(s)**, **Winner (blind)** and **User preferred**, and
+count **Agent(s) spawned** per model: `S` Sonnet workers, `C` Codex sessions (a resume counts as a
+relay, not a new session), `O` Opus synthesizers — e.g. `S2 (1 input-relay) C1 O1`. In single
+modes it's a plain count, e.g. `3 (1 context-relay, 1 input-relay)`. Record a mode switch on the
+row where it took effect.
 
 For the Design phase, record regenerations in the **Gate decision** cell as they happen (e.g.
 "Regenerated ×2, then Approved candidate B") rather than a separate column — it's the one phase
 whose gate can loop, and the manifest should show that history plainly.
 
 This file is the pipeline's own state — the phase artifacts it links to (briefs, specs,
-tickets, design tokens) live in Claude Docs, plus whatever home the conventions give them in the
-repo (tickets in the tracker, ADRs in `docs/`, …); don't duplicate their content here, only track that they exist, which agent(s) produced them, and
-what was decided about them. The **Agent(s) spawned** count matters: it's how a later read of
-this file shows whether a phase stayed appropriately scoped or had to be split further.
+tickets, design tokens) live where the mode puts them (Claude Docs or `approved.md`), plus whatever
+home the conventions give them in the repo (tickets in the tracker, ADRs in `docs/`, …); don't
+duplicate their content here, only track that they exist, which agent(s) produced them, and what
+was decided about them. The **Agent(s) spawned** count matters: it's how a later read of this file
+shows whether a phase stayed appropriately scoped or had to be split further.
 
 ## 4. Walk the phases: spawn, gate, repeat
 
@@ -212,7 +236,7 @@ For each phase your size classification includes, in order:
 
 1. **Write a self-contained prompt** for the phase-orchestrator — it starts with zero context, so
    include: `kind`/`slug`/`request`, which delegate skill(s) to invoke (from the table below), the
-   exact artifact to produce (`dual-run` adds where each worker writes it), *pointers* (file paths,
+   exact artifact to produce and where (in `dual` mode, `dual-run` sets where each worker writes it), *pointers* (file paths,
    not pasted content) to the prior phases' `approved.md` snapshots and the conventions files, and **both standing instructions from Relay
    protocol below** (context-budget self-monitoring, and the no-direct-user-contact rule) — every
    phase-orchestrator needs both in its own prompt, since it never reads this file itself. If the
@@ -221,43 +245,50 @@ For each phase your size classification includes, in order:
    Never paste a prior artifact's full content into the prompt — that's exactly the accumulation
    this design avoids.
 2. **Split it into sub-tasks** where the phase holds distinct kinds of work (Plan: `spec`, then
-   `ticket-breakdown`; Implement: per ticket, `tests` then `implementation`) — each is its own dual
-   run with its own `task_type` (see `dual-run`'s **Task types**), because the scorecard can only
-   show "Codex writes better tests, Sonnet better specs" if they were scored separately. Sub-tasks
-   that depend on each other run in order, each reading the previous one's synthesized output.
-3. **Check routing**, then **dual-run each sub-task** (see **Model selection** below for the Codex
-   effort and the exceptions). If `~/.sdlc/routing.md` routes this `task_type` to one model, run
-   only that model's worker, still synthesize (as a review pass on one draft), and still record.
-   Never use `subagent_type: "fork"` for phase work — a fork inherits your full conversation
-   context, which defeats the entire point of a fresh, scoped agent. A named agent (e.g.
-   `design-review` for a live-browser QA pass) runs as the Sonnet worker's `subagent_type`; its
-   Codex counterpart is the same agent's TOML under `codex/agents/`.
-4. **Handle whatever comes back** — a synthesized artifact, or a relay from either worker
-   (context-budget or needs-user-input; `dual-run` step 3 merges both workers' questions into one
-   ask). A relay isn't the phase failing, it's a worker doing exactly what it was told to do when
-   it hit one of those two triggers; resolve it and keep going.
-5. **Read the synthesizer's report like a principal architect** (above), then record the doc
-   link, agent counts, blind winner, and relays in the run manifest. The scorecard record was
-   already written by `dual-run` step 5.
-6. **Gate with one `AskUserQuestion` call holding two questions:**
-   - **Decision** — **Approve** (export the doc, start the next phase), **Revise** (a new dual-run
-     attempt of this sub-task with the user's feedback added to the prompt, re-gate), or **Skip
-     remaining phases** (jump straight to Ship with what exists so far).
-   - **Which draft would you have kept?** (header `Preferred`) — **The merged doc**, **Draft A**,
-     **Draft B**, **Didn't compare**. Give the draft paths (`<dir>/A/draft.md`, `<dir>/B/draft.md`)
-     in the summary above the question so the user can look. Keep the labels blind here too; map
-     them through `key.json` only when recording.
-   Present a short summary first — not the full artifact, the artifact *is* the detail, and you
-   haven't read it — the synthesizer's report, your own named concerns, and the doc link. Do not
-   start the next phase without an explicit Approve.
-7. **Record the gate** in the manifest, and in the scorecard:
-   `scorecard.py add -` with a gate record (`references/scorecard.md` in `dual-run`) — decision,
-   preferred (unblinded: `merged`/`sonnet`/`codex`/`unsure`), whether you flagged a concern, and
-   the user's reason in their words if they gave one.
+   `ticket-breakdown`; Implement: per ticket, `tests` then `implementation`). Sub-tasks that depend
+   on each other run in order, each reading the previous one's output. In `dual` mode each sub-task
+   is its own dual run with its own `task_type` (see `dual-run`'s **Task types**), because the
+   scorecard can only show "Codex writes better tests, Sonnet better specs" if they were scored
+   separately. In single modes, split only where the scope calls for it (see **Relay protocol**).
+3. **Run it.**
+   - **Single mode:** pick the tier (see **Model selection**) and spawn the phase-orchestrator —
+     the Agent tool when Claude hosts (omit `subagent_type` unless a named agent fits, e.g.
+     `design-review` for a live-browser QA pass), `spawn_agent` when Codex hosts (a named agent's
+     Codex counterpart is its TOML under `codex/agents/`).
+   - **`dual` mode:** check routing, then dual-run each sub-task (Codex effort and exceptions in
+     **Model selection**). If `~/.sdlc/routing.md` routes this `task_type` to one model, run only
+     that model's worker, still synthesize (as a review pass on one draft), and still record. A
+     named agent runs as the Claude worker's `subagent_type` and as its TOML on the Codex side.
+   Never use `subagent_type: "fork"` (or fork the Codex thread) for phase work — a fork inherits
+   your full conversation context, which defeats the entire point of a fresh, scoped agent.
+4. **Handle whatever comes back** — a finished artifact, or a relay (context-budget or
+   needs-user-input; see **Relay protocol** — in `dual` mode, `dual-run` step 3 merges both
+   workers' questions into one ask). A relay isn't the phase failing, it's an agent doing exactly
+   what it was told to do when it hit one of those two triggers; resolve it and keep going.
+5. **Read the report like a principal architect** (above) — the phase-orchestrator's in single
+   modes, the synthesizer's in `dual` — then record the artifact link, model(s), agent counts and
+   relays in the run manifest (plus the blind winner in `dual`; its scorecard record was already
+   written by `dual-run` step 5).
+6. **Gate with `AskUserQuestion`.** Present a short summary first — not the full artifact, the
+   artifact *is* the detail, and you haven't read it — the report, your own named concerns, and the
+   artifact link. Then ask:
+   - **Decision** — **Approve** (snapshot the artifact as `approved.md`, start the next phase),
+     **Revise** (a fresh agent — a new dual-run attempt in `dual` mode — adjusts this phase's
+     artifact with the user's feedback, re-gate), or **Skip remaining phases** (jump straight to
+     Ship with what exists so far).
+   - **`dual` mode only, in the same call — Which draft would you have kept?** (header
+     `Preferred`) — **The merged doc**, **Draft A**, **Draft B**, **Didn't compare**. Give the draft
+     paths (`<dir>/A/draft.md`, `<dir>/B/draft.md`) in the summary so the user can look. Keep the
+     labels blind here too; map them through `key.json` only when recording.
+   Do not start the next phase without an explicit Approve.
+7. **Record the gate** in the manifest. In `dual` mode also append a scorecard gate record:
+   `scorecard.py add -` (`references/scorecard.md` in `dual-run`) — decision, preferred (unblinded:
+   `merged`/`sonnet`/`codex`/`unsure`), whether you flagged a concern, and the user's reason in
+   their words if they gave one.
 
 ## Relay protocol
 
-Under `dual-run`, "phase-orchestrator" below means each of the two workers; both carry these
+In `dual` mode, "phase-orchestrator" below means each of the two workers; both carry these
 instructions (they're in `dual-run`'s worker contract too), and `dual-run` step 3 is how their
 relays reach you — continuations go through `SendMessage` (Sonnet) and `codex-run.sh --resume`
 (Codex) rather than fresh agents, so each worker keeps its own context.
@@ -296,7 +327,7 @@ whether it's ballooning can tally its own accumulated file reads and tool output
   files run one after another. After each batch, it merges the batch's branches, runs the tests
   covering the touched paths, and only then starts the next batch — a batch whose merge or tests
   fail stops there and reports, it doesn't carry on. The run manifest records the batches.
-  Under `dual-run`, each ticket is its own code-mode dual run (two worktrees, one synthesized
+  In `dual` mode, each ticket is its own code-mode dual run (two worktrees, one synthesized
   branch); the batch merges the synthesized branches. That's two worktrees per parallel ticket, so
   cap a batch at 3 parallel tickets unless the user raises it.
 - **Trigger 1 — context budget.** Upfront judgment misses sometimes: a task looks scoped and then
@@ -377,24 +408,37 @@ through either path produces the same comment discipline.
 
 ## Model selection
 
-Fixed roles, not a per-phase pick: **you** are Opus, every phase's two workers are **Sonnet** and
-**Codex `gpt-6.1-sol`**, every synthesizer is **Opus**. What you choose per sub-task is Codex's
-reasoning effort, from the tier you'd have picked under `fan-out-fan-in`'s **Model tiers**:
+Every phase picks a tier from `fan-out-fan-in`'s **Model tiers** — the one definition for the repo:
 
-- **Mechanical or narrow** (formatting an agreed ticket breakdown, a small config fix) — `low`.
-- **Typical phase work** — `medium`.
+- **Mechanical or narrow** (formatting an agreed ticket breakdown, a small config fix, a
+  well-understood bug triage) — cheap.
+- **Typical phase work** (running a skill end-to-end against a clear brief) — standard.
 - **High-judgment or high-stakes** (architecture in Plan or `harden`, `security-review`, charting a
-  `large` effort with `wayfinder`) — `high`.
+  `large` effort with `wayfinder`) — strong.
 
-Sonnet stays Sonnet at every tier; that's what keeps the comparison like-for-like across runs. A
-stated user preference always wins — if they ask for a different pairing, record it in the
-manifest, because the scorecard's records for that run are then a different experiment.
+What a tier means depends on the mode:
 
-**Not dual-run:** bookkeeping with no judgment in it (exporting a doc, writing the manifest,
-`scorecard.py`) — you or a `haiku` agent do it once. And anything with **external side effects**
-— pushing, opening the PR or MR, merging, filing tickets in the tracker, posting anywhere — runs
-once, after the gate, by a single Sonnet agent working from the approved artifact. Two workers
-can both draft a PR description or a ticket set; only one thing may actually publish it.
+| Mode | Cheap | Standard | Strong |
+| --- | --- | --- | --- |
+| `claude` | `haiku` | `sonnet` | `opus` |
+| `codex` | effort `low` | effort `medium` | effort `high` (the session's model) |
+| `dual` | Codex effort `low` | Codex effort `medium` | Codex effort `high` |
+
+In `dual` mode the roles are fixed instead — the Claude worker is always Sonnet, the synthesizer
+always Opus, the Codex worker the driver's model (`dual-run`'s **Drivers**) — and the tier only
+sets the Codex worker's effort. Sonnet stays Sonnet at every tier; that's what keeps the comparison
+like-for-like across runs.
+
+A stated user preference always wins; record it in the manifest (in `dual` mode a different
+pairing makes that run's scorecard records a different experiment, so say so in the manifest too).
+Record which model ran each phase, so a mismatch (a cheap agent visibly struggling with
+judgment-heavy work) is evidence for next time, not just a felt cost in the moment.
+
+**Run once, in every mode:** bookkeeping with no judgment in it (exporting a doc, writing the
+manifest, `scorecard.py`) — you or a cheap agent. And anything with **external side effects** —
+pushing, opening the PR or MR, merging, filing tickets in the tracker, posting anywhere — runs once,
+after the gate, by a single standard-tier agent working from the approved artifact. In `dual` mode
+two workers can both draft a PR description or a ticket set; only one thing may publish it.
 
 ### Phase table
 
@@ -406,7 +450,7 @@ can both draft a PR description or a ticket set; only one thing may actually pub
 | Plan / Architecture | `to-spec`, `codebase-design`, `domain-modeling`, `improve-codebase-architecture` (only if it surfaces real friction), `to-tickets` (standard/large sizes only). For `kind: harden`, run `improve-codebase-architecture` first — feed it the Research phase's findings so the deepening opportunities it surfaces are audited against the researched practices, not just general "shallow module" heuristics — then `to-spec` the target architecture before `to-tickets`. Hardening work is especially prone to over-building (a new service, a whole new abstraction layer, a heavyweight dependency where a built-in platform feature or existing pattern would close the same gap) — run each proposed remediation through `scoville-code-anti-ai-slop`'s priority ladder (skip, reuse, built-in, only then custom) before it gets specced into a ticket. |
 | Implement (TDD) | `tdd`, `implement`, plus `ui-styling`/`silk-design`/`frontend-design` if the work touches UI. For `kind: fix`, start with `diagnosing-bugs` before implementing. |
 | Review / QA | `scoville-code-anti-ai-slop` (review outcome); `scoville-ui-anti-ai-slop` + the `design-review` agent if UI was touched; `security-review` if step 5 below applies. For `kind: harden`, `security-review` is mandatory at every size, not conditional on step 5's diff heuristic. |
-| Ship | `resolving-merge-conflicts` (if conflicts exist), `wizard` (if manual infra steps remain), `handoff` (if the session ends before Ship completes). Dual-run the drafts (`pr-description`, `release-notes`, a `conflict-resolution` in code mode); the push/PR/merge itself runs once — see **Not dual-run** above — following the conventions' PR rules, which must be established before Ship if they aren't yet. |
+| Ship | `resolving-merge-conflicts` (if conflicts exist), `wizard` (if manual infra steps remain), `handoff` (if the session ends before Ship completes). In `dual` mode, dual-run the drafts (`pr-description`, `release-notes`, a `conflict-resolution` in code mode); in every mode the push/PR/merge itself runs once — see **Run once** above — following the conventions' PR rules, which must be established before Ship if they aren't yet. |
 
 ### The Design phase: prototypes before direction
 
@@ -443,7 +487,7 @@ broader visual-identity change — don't default to either silently. (`redesign-
 step is where "improve without breaking functionality" constrains things again, once a direction
 is picked, regardless of which way this was answered.)
 
-**Under `dual-run`:** each worker proposes its own 3 candidates, so the synthesizer sees six. It
+**In `dual` mode:** each worker proposes its own 3 candidates, so the synthesizer sees six. It
 builds the one prototype artifact from the 3 strongest *and most mutually distinct* of those six —
 from either draft, scored like any other item — rather than merging candidates into hybrids. Agent
 2's build is a code-mode dual run against the picked direction.
