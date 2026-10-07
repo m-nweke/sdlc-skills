@@ -1,0 +1,6 @@
+{
+  "name": "sdlc-scorecard",
+  "version": "0.1.0",
+  "description": "Dashboard of which model (Sonnet or Codex) wins each SDLC phase and task type in dual runs",
+  "types": "./types/index.d.ts"
+}

@@ -5,6 +5,10 @@ description: Take a Jira ticket from paste to reviewed PR — read the ticket, p
 
 # Work a ticket
 
+> **Conventions first.** Jira, `develop`, `feature/{TICKET}-…`, the Copilot loop and the known false positives below came from a previous company's process. Before acting on
+> any of it, resolve the real rule through `company-conventions`; where they differ the conventions
+> win, and where the conventions are silent, ask — don't fall back to what's written here.
+
 Ticket → evidence → plan → minimal change → verified → self-reviewed → PR → Copilot loop → ticket updated.
 
 `$ARGUMENTS` is a ticket key (`IOTH-6543`), a Jira URL, or a pasted ticket body.

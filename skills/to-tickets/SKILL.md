@@ -5,6 +5,10 @@ description: Break a plan, spec, or the current conversation into a set of trace
 
 # To Tickets
 
+> **Conventions first.** Tracker choice, Jira mechanics and the epic feature-branch workflow below came from a previous company's process. Before acting on
+> any of it, resolve the real rule through `company-conventions`; where they differ the conventions
+> win, and where the conventions are silent, ask — don't fall back to what's written here.
+
 Break a plan, spec, or conversation into a set of **tickets**: tracer-bullet vertical slices, each declaring the tickets that **block** it.
 
 The issue tracker and triage label vocabulary should have been provided to you. If not, tell the user to run `/setup-matt-pocock-skills`.

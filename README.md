@@ -241,6 +241,37 @@ call the underlying skill directly (`diagnosing-bugs`, `frontend-design`, `to-sp
 never compete with those skills for the same request — see
 [Composition notes](#composition-notes).
 
+## Dual-model runs: Claude + Codex on every phase
+
+Every pipeline phase now runs on two models. The master orchestrator is Opus; each phase's
+identical prompt goes to a **Sonnet** worker and a **Codex `gpt-6.1-sol`** worker in parallel,
+neither sees the other, and a **blind Opus synthesizer** (it only sees "Draft A" and "Draft B")
+merges the best of both into one non-redundant artifact. The idea: each model covers the other's
+blind spots now, and every run builds the evidence for routing each kind of task to one model later.
+
+- **`dual-run`** is the mechanism: worker contract, blind A/B key, relays from both workers merged
+  into one question, two git worktrees in code mode, the synthesizer prompt and its provenance
+  ledger (which item came from which draft, what was dropped, what was wrong).
+- **`scripts/codex-run.sh`** runs one Codex worker (`codex exec --json`, structured final report,
+  `--resume` for relays) and records its session id, token use and duration.
+- **`scripts/scorecard.py`** appends one record per scored sub-task and one per gate (your own
+  pick of merged / A / B) to `~/.sdlc/scorecard.jsonl` — outside this public repo, since records
+  name real projects. `scorecard.py summary --by task_type` prints the comparison.
+- **`mods/sdlc-scorecard`** is a Claude Code mod: `/scorecard [phase|task]` opens a live pane of
+  wins, kept-item share, unique catches, errors, tokens and how often you agreed with the
+  synthesizer, per phase or task type, and flags routing candidates.
+- **Artifacts live in Claude Docs.** The synthesizer publishes each merged artifact as a doc; after
+  you approve, it's exported to `approved.md` so the next phase — and Codex — can read it.
+- **`company-conventions`** replaces every baked-in process assumption (tracker, branch names, PR
+  rules, naming, where docs live) with rules recorded in `~/.sdlc/conventions.md` and per-project
+  `.sdlc/conventions.md`, established by asking you the first time a step needs one.
+
+Phases are split into sub-tasks with a `task_type` (`spec`, `ticket-breakdown`, `tests`,
+`implementation`, `review-security`, …) so the scorecard can show "Codex writes better tests,
+Sonnet better specs" rather than one blended verdict per phase. When a task type has 8+ runs and
+one model wins 75%+, the pipeline proposes routing it to that model alone
+(`skills/dual-run/references/scorecard.md`); nothing switches without your say-so.
+
 ## Skills — what's here and where it came from
 
 Skills here are the source of truth; nothing in this section is installed verbatim from
@@ -253,6 +284,9 @@ reusing this repo outside personal use.
 - `discovery-ideation` — frames a raw idea/problem into a grilled, written brief
 - `sdlc-pipeline`, `sdlc-new-feature`, `sdlc-fix`, `sdlc-redesign`, `sdlc-harden` — the
   shared orchestration engine and its four entry points (see [Using the pipeline](#using-the-pipeline))
+- `dual-run` — one task through Sonnet and Codex in parallel, blind Opus synthesis, scored
+  (see [Dual-model runs](#dual-model-runs-claude--codex-on-every-phase))
+- `company-conventions` — looks up or establishes (by asking) the current company's process rules
 - `work-ticket` — takes a Jira ticket from paste to reviewed PR in one fast session
   (not the gated pipeline above); composes `diagnosing-bugs` for non-obvious root
   causes, `tdd` for test-first implementation, and `codebase-design` /
