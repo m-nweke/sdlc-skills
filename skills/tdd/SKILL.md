@@ -15,6 +15,15 @@ Tests verify behavior through public interfaces, not implementation details. Cod
 
 See [tests.md](tests.md) for examples and [mocking.md](mocking.md) for mocking guidelines.
 
+## A lean suite
+
+Every test is **load-bearing**: deleting it would let a real regression through that no other test catches. The suite grows by behaviors, never by functions, queries, or code branches.
+
+- **One behavior, one test, at the highest seam that observes it.** When an endpoint test already exercises a path, the repository, serializer, and helpers beneath it are covered.
+- **Cases of one rule share one table-driven test** (`subTest`, `test.each`, a loop over scenarios).
+- **Extend before adding.** Before writing a test, find the one that already pins this behavior and add the case there.
+- **Spend tests where a miss is expensive**: authorization and data visibility, calculation and aggregation rules, migrations, data-integrity guards. Wiring, pass-through clients, and framework guarantees (a read-only view rejecting POST) ride on the tests above them.
+
 ## Seams: where tests go
 
 A **seam** is the public boundary you test at: the interface where you observe behavior without reaching inside. Tests live at seams, never against internals.
@@ -54,3 +63,5 @@ If it's expensive, bookend the work with the full suite and scope everything in 
 
   Prefer the tool's native "run related/changed tests" feature over hand-picking paths — it accounts for imports/dependents you'd otherwise miss. If a change touches a widely-imported module or shared fixture/config, treat the blast radius as the full suite for that cycle — narrow scoping can't see cross-module breakage there.
 - **End**: run the full suite once more before declaring the work done or handing off to review. Scoping speeds up the loop; it never replaces this final check.
+
+Before handing off, re-read every test you added this session against the lean-suite rules: each one is load-bearing, or it gets merged into a sibling or deleted.
