@@ -112,7 +112,7 @@ way gate-automation trust gets built, not assumed into existence.
    ./install.sh codex    # Codex only
    ```
    Claude Code gets `skills/*` in `$CLAUDE_CONFIG_DIR/skills` (default `~/.claude`) and
-   `agents/*.md` in `…/agents`. Run it once per config dir if you keep separate
+   `agents/*.md` in `…/agents`, `workflows/*.js` in `…/workflows`. Run it once per config dir if you keep separate
    personal/work configs (`CLAUDE_CONFIG_DIR=~/.claude-personal ./install.sh claude`).
 3. Invoke a pipeline entry point by name (see below): type it in Claude Code, or `$sdlc-new-feature`
    in Codex.
@@ -250,7 +250,7 @@ the start (`sdlc-pipeline` step 0):
 | --- | --- | --- |
 | `claude` | Claude Code | One agent per phase on a tier model (`haiku`/`sonnet`/`opus`); artifacts in Claude Docs |
 | `codex` | Codex | One sub-agent per phase at a tier effort; artifacts as markdown in the run folder |
-| `dual` | Both, logged in | Every phase on Sonnet + Codex, blind Opus merge, scored (below) |
+| `dual` | Both, logged in | Every phase but Review on Sonnet + Codex, blind Opus merge, scored (below); Review always on Claude |
 
 The pipeline checks what's installed and logged in, and which AI tools the company allows on its
 code (recorded under `Pipeline` in the conventions file). Then it runs single-model automatically
@@ -260,7 +260,7 @@ gate. Start from Claude Code with an entry point (`/sdlc-fix` …), or from Code
 
 ### Dual mode
 
-In `dual` mode every pipeline phase runs on two models. The master orchestrator is Opus; each phase's
+In `dual` mode every pipeline phase except Review/QA runs on two models; Review always runs on Claude through the `review-lenses` workflow. The master orchestrator is Opus; each phase's
 identical prompt goes to a **Sonnet** worker and a **Codex `gpt-6.1-sol`** worker in parallel,
 neither sees the other, and a **blind Opus synthesizer** (it only sees "Draft A" and "Draft B")
 merges the best of both into one non-redundant artifact. The idea: each model covers the other's
@@ -296,7 +296,7 @@ filter by it (`summary --driver codex`, or the pane's "Driven by" button) rather
 the two Codex models.
 
 Phases are split into sub-tasks with a `task_type` (`spec`, `ticket-breakdown`, `tests`,
-`implementation`, `review-security`, …) so the scorecard can show "Codex writes better tests,
+`implementation`, `pr-description`, …) so the scorecard can show "Codex writes better tests,
 Sonnet better specs" rather than one blended verdict per phase. When a task type has 8+ runs and
 one model wins 75%+, the pipeline proposes routing it to that model alone
 (`skills/dual-run/references/scorecard.md`); nothing switches without your say-so.

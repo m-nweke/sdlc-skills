@@ -259,6 +259,12 @@ For each phase your size classification includes, in order:
      **Model selection**). If `~/.sdlc/routing.md` routes this `task_type` to one model, run only
      that model's worker, still synthesize (as a review pass on one draft), and still record. A
      named agent runs as the Claude worker's `subagent_type` and as its TOML on the Codex side.
+     **Review/QA is the exception: it always runs on Claude, never as a dual run.** Run it as in
+     single mode through `sdlc-code-review`, which runs its lenses as the `review-lenses`
+     workflow, plus the `design-review` agent if UI was touched. From a Codex host, run it with
+     `claude-run.sh --model sonnet` and invoke `sdlc-code-review` from there. Review/QA has no
+     synthesis and writes no scorecard record. Any fix the review calls for is Implement work
+     (`implementation`) and is dual-run as usual.
    Never use `subagent_type: "fork"` (or fork the Codex thread) for phase work — a fork inherits
    your full conversation context, which defeats the entire point of a fresh, scoped agent.
 4. **Handle whatever comes back** — a finished artifact, or a relay (context-budget or

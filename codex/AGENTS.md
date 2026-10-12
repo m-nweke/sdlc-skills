@@ -10,6 +10,7 @@ mechanism changes.
 | --- | --- |
 | `AskUserQuestion` tool | Use a structured question tool if one is exposed (e.g. `request_user_input`). Otherwise send one message holding only the questions: numbered, each with 2–4 lettered options, your recommendation first and marked, plus "other: ___". Then stop and wait. Never bury a question in prose. |
 | "invoke / use the `X` skill", Skill tool, `/X` | Open `~/.agents/skills/X/SKILL.md` (or `$REPO/.agents/skills/X/SKILL.md`) and follow it. The user types `$X`. |
+| Saved workflow (Workflow tool, `workflows/*.js`) | No equivalent. Take the skill's non-workflow path. |
 | Agent tool, "spawn a sub-agent / phase-orchestrator" | `spawn_agent`, then `wait` for results. `subagent_type: "Explore"` → `explorer`; general-purpose / `"claude"` / omitted → `default` or `worker`. Never fork the current thread for phase work. |
 | Named agent (e.g. `design-review`) | Custom agent from `~/.codex/agents/<name>.toml`. If `spawn_agent` can't select it by name, read that TOML and pass its `developer_instructions` as the spawned agent's prompt. |
 | `run_in_background: true`, "all in a single message" | Spawn every independent agent before waiting on any of them, then collect results together. |

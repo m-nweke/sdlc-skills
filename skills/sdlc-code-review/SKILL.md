@@ -30,11 +30,21 @@ Add a specialist when the change warrants it:
 
 ## 3 — Run them in parallel
 
-The lenses are independent reads of the same diff. With one lens, run it directly. With two or
-more, spawn one agent per lens in the same turn (standard tier; strong for `security-review`),
-each told to invoke its skill against the pinned target and return findings grouped under that
-skill's own axes. Don't use `fan-out-fan-in` — there's nothing to reconcile, the axes stay
-separate (step 4).
+The lenses are independent reads of the same diff.
+
+**On Claude Code with workflows enabled**, run the saved `review-lenses` workflow (Workflow tool,
+`name: "review-lenses"`) for any number of lenses, with `args: {target, spec, lenses, extra}` —
+`lenses` the specialists from step 2 (`"ui"`, `"security"`), `extra` any brief lines the caller
+adds. It runs the lenses in the background and sends every finding below high confidence to a
+cheap refuter before it reaches you, so step 4 starts from checked findings and a `refuted` list
+instead of raw output. Report refuted findings as dismissed, with the refuter's reason.
+
+**Elsewhere** (Codex, or workflows off): with one lens, run it directly. With two or more, spawn
+one agent per lens in the same turn (standard tier; strong for `security-review`), each told to
+invoke its skill against the pinned target and return findings grouped under that skill's own axes.
+
+Either way, don't use `fan-out-fan-in` — there's nothing to reconcile, the axes stay separate
+(step 4).
 
 The Standards axis may surface a real shallow-module or deepening concern, not just a local
 smell → note it as a candidate for `improve-codebase-architecture`. Don't run that skill

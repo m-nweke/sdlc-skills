@@ -179,7 +179,9 @@ Append this to every `prompt.md`, verbatim:
 ## Task types
 
 The scorecard compares models per `task_type`, so name the kind of work, not the ticket. Use one of
-these; add a new one only when nothing fits, and tell the user you added it.
+these; add a new one only when nothing fits, and tell the user you added it. Review/QA has no task
+types because it always runs on Claude (`sdlc-pipeline`, step 4). Older `review-*` records stay in
+the scorecard as history.
 
 | Phase | Task types |
 | --- | --- |
@@ -188,7 +190,6 @@ these; add a new one only when nothing fits, and tell the user you added it.
 | design | `ux-candidates`, `design-build`, `design-tokens` |
 | plan | `spec`, `architecture`, `domain-model`, `ticket-breakdown` |
 | implement | `tests`, `implementation`, `bug-diagnosis` |
-| review | `review-correctness`, `review-security`, `review-ui` |
 | ship | `release-notes`, `pr-description`, `conflict-resolution` |
 
 ## Splitting a phase into sub-tasks

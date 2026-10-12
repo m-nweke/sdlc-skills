@@ -32,7 +32,7 @@ done
 mkdir -p "$out"
 
 args=(-p --model "$model" --output-format json --permission-mode acceptEdits
-      --settings '{"sandbox":{"enabled":true,"autoAllowBashIfSandboxed":true}}')
+      --settings '{"sandbox":{"enabled":true,"autoAllowBashIfSandboxed":true},"permissions":{"allow":["Workflow(review-lenses)"]}}')
 [ -n "$schema" ] && args+=(--json-schema "$(cat "$schema")")
 [ -n "$resume" ] && args+=(--resume "$resume")
 

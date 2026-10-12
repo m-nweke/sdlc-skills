@@ -18,9 +18,10 @@ link() { # link <src> <dest>
 
 install_claude() {
   local home="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-  mkdir -p "$home/skills" "$home/agents"
+  mkdir -p "$home/skills" "$home/agents" "$home/workflows"
   for s in "$REPO"/skills/*/; do link "${s%/}" "$home/skills/$(basename "$s")"; done
   for a in "$REPO"/agents/*.md; do link "$a" "$home/agents/$(basename "$a")"; done
+  for w in "$REPO"/workflows/*.js; do link "$w" "$home/workflows/$(basename "$w")"; done
   link "$REPO/agents/design-review-refs" "$home/agents/design-review-refs"
   echo "Claude Code: linked into $home"
 }

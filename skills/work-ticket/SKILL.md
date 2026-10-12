@@ -61,6 +61,8 @@ Enumerate **every producer and consumer of that representation**, not just the c
 
 **Fan this out.** Once you've listed the construction/consumption paths, answer any path a single `grep` or file read settles yourself first. For the rest, load `fan-out-fan-in`: cluster paths by file or module to at most 6 branches on the cheap tier, each answering the same fixed question — *what does this emit/read for the field I just changed?* — and quoting the exact line as evidence. A path that emits nothing is a finding, not a default. Merge inline: read the quoted lines rather than trusting a branch's "looks fine", and open the file yourself for any path a branch marked low-confidence or left in Gaps.
 
+Spawn the branches in the background and start Step 5's lint and scoped tests while they work. The sweep only reads, so they don't conflict. Merge the sweep before Step 6. If it turns up a miss, fix it and re-run the scoped tests.
+
 Three things make these misses invisible, so don't wait for a signal: MapStruct doesn't error on an unmapped target; the missing value is usually `null`, which often has a plausible meaning in the new contract; and nothing fails at compile or run time. Silence is not evidence the other paths are fine.
 
 State the sweep's scope in your report — "swept N producers, all correct" is a result. An unstated sweep is indistinguishable from no sweep.
@@ -84,7 +86,7 @@ For a bug, the test should fail before the fix and pass after — show both runs
 
 ## 6 — Self-review the diff
 
-Run `sdlc-code-review` on the diff against the ticket. It owns the parallel lenses — correctness and Standards+Spec via `scoville-code-anti-ai-slop`, plus UI and security specialists when the diff warrants them — so this step doesn't define its own. Add two things to its brief:
+Run `sdlc-code-review` on the diff against the ticket. It owns the parallel lenses — correctness and Standards+Spec via `scoville-code-anti-ai-slop`, plus UI and security specialists when the diff warrants them — so this step doesn't define its own. On Claude Code it runs them as the `review-lenses` workflow; pass the two lines below as its `extra` and the ticket's acceptance criteria as its `spec`. Add two things to its brief:
 
 - Re-check the paths you didn't touch but could have broken — self-introduced regressions in adjacent device types have slipped through before.
 - Apply `codebase-design`'s vocabulary (seams, leverage, locality, the deletion test) in the Standards lens — the same second pass `sdlc-pipeline` runs before a Plan/Implement gate.
@@ -109,9 +111,11 @@ Message: `feat|fix({TICKET}): what the code does`. Let hooks run; on failure fix
 
 Wait ~7–8 minutes after requesting; Copilot runs well behind pushes. Foreground `sleep` is blocked — use a background Bash call (`sleep 450`, `run_in_background: true`), which re-invokes you on exit. An empty queue only counts as clean if Copilot's latest review timestamp is after your last push.
 
+**Use the wait for Steps 9 and 10.** Neither depends on Copilot. Post the Jira comment and move the ticket to its in-review status, then write and publish the write-up. If the Copilot loop changes the fix, update both before you report done.
+
 ## 9 — Close the loop on Jira
 
-Comment what shipped and move the status. **Check the rendering format** — Markdown posted into a wiki-markup field renders literally and has needed a full rewrite before. Never carry a claim from the ticket or an older doc into an update without re-verifying it against current code.
+Comment what shipped and move the status. Do this while Copilot's review is pending (Step 8), not after it. **Check the rendering format** — Markdown posted into a wiki-markup field renders literally and has needed a full rewrite before. Never carry a claim from the ticket or an older doc into an update without re-verifying it against current code.
 
 ## 10 — Publish the write-up
 
