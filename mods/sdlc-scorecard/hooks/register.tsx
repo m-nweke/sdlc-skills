@@ -1,14 +1,53 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface as Api, Register } from 'claude-code'
 
-import type { Board, Driver, GroupBy, GroupRow } from '../types'
+import type { Board, Driver, GroupBy, GroupRow, LiveWorker } from '../types'
 import { aggregate, leader, parse } from './aggregate'
+import { elapsed, isActive, parseRunCommand, promptFileIn, summarize, visible, LINGER_MS } from './live'
 
 const PANE = 'sdlc-scorecard'
 const board = atom({ plugin: 'sdlc-scorecard', key: 'board' } as const, null)
 const groupBy = atom({ plugin: 'sdlc-scorecard', key: 'groupBy' } as const, 'phase')
 const driver = atom({ plugin: 'sdlc-scorecard', key: 'driver' } as const, 'all')
 const mtime = atom({ plugin: 'sdlc-scorecard', key: 'mtime' } as const, 0)
+const live = atom({ plugin: 'sdlc-scorecard', key: 'live' } as const, [])
+
+const ENDED = new Set(['completed', 'failed', 'killed'])
+
+async function promptText($: Api, file: string | null, fallback: string): Promise<string> {
+  if (!file) return summarize(fallback)
+  const text = await $.fs.read(file).catch(() => null)
+  return summarize(text ?? fallback)
+}
+
+async function track($: Api, w: LiveWorker): Promise<void> {
+  await update($, live, ws => [...ws.filter(x => x.id !== w.id), w])
+}
+
+// Subagents end by their status in $.agent.list(); shell workers when their script writes
+// meta.json. Always writes a fresh list, so an open pane redraws and its elapsed times tick.
+async function refreshLive($: Api): Promise<void> {
+  const now = await $.clock.now()
+  const agents = new Map((await $.agent.list().catch(() => [])).map(a => [a.id, a]))
+  const ws = await read($, live)
+  const next: LiveWorker[] = []
+  for (const w of ws) {
+    if (!isActive(w)) {
+      if (now - w.endedAt! < LINGER_MS) next.push(w)
+      continue
+    }
+    if (w.source === 'agent') {
+      const a = agents.get(w.id)
+      // Dropped from the list: it ended a while ago. Missing in its first seconds: not listed yet.
+      if (!a) next.push(now - w.startedAt > 10_000 ? { ...w, status: 'completed', endedAt: now } : w)
+      else next.push({ ...w, status: a.status, endedAt: ENDED.has(a.status) ? now : null })
+    } else {
+      const stat = w.metaPath ? await $.fs.stat(w.metaPath).catch(() => null) : null
+      next.push(stat && stat.mtimeMs >= w.startedAt ? { ...w, status: 'completed', endedAt: now } : w)
+    }
+  }
+  await update($, live, () => next)
+}
 
 async function logPath($: Api): Promise<string> {
   const custom = await $.env.get('SDLC_SCORECARD')
@@ -53,9 +92,10 @@ let poll: { cancel: () => void } | null = null
 async function openPane($: Api, by?: GroupBy): Promise<void> {
   if (by) await update($, groupBy, () => by)
   await refresh($, true)
+  await refreshLive($)
   await $.ui.open({ id: PANE, title: 'Model scorecard' })
   poll?.cancel()
-  poll = $.clock.every(5000, () => void refresh($))
+  poll = $.clock.every(5000, () => void Promise.all([refresh($), refreshLive($)]))
 }
 
 export const register: Register = on => {
@@ -73,6 +113,40 @@ export const register: Register = on => {
     const by: GroupBy | undefined = arg.startsWith('task') ? 'task_type' : arg.startsWith('phase') ? 'phase' : undefined
     await openPane($, by)
     return { text: 'Scorecard pane opened.' }
+  })
+
+  // Records every subagent as it starts; the hook only observes, so the spawn goes through unchanged.
+  on('agent.spawn', async ($, e, next) => {
+    const r = await next(e)
+    if (!('agentId' in r) || !r.agentId) return r
+    await track($, {
+      id: r.agentId, source: 'agent', model: r.model, title: e.description || e.subagentType,
+      prompt: await promptText($, promptFileIn(e.prompt), e.prompt),
+      startedAt: await $.clock.now(), endedAt: null, status: 'running', metaPath: null,
+    })
+    return r
+  })
+
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+    const run = parseRunCommand(e.command)
+    if (!run) return next(e)
+    const id = `${run.script}:${run.out ?? e.command}`
+    const startedAt = await $.clock.now()
+    await track($, {
+      id, source: run.script,
+      model: run.effort ? `${run.model} (${run.effort})` : run.model,
+      title: `${run.script}.sh${run.resume ? ' resume' : ''}${run.out ? ` → ${run.out.split('/').slice(-4).join('/')}` : ''}`,
+      prompt: await promptText($, run.promptFile, ''),
+      startedAt, endedAt: null, status: 'running',
+      metaPath: run.out ? `${run.out}/meta.json` : null,
+    })
+    const r = await next(e)
+    // A foreground call is over when it returns; a background one ends on its meta.json.
+    if (!e.run_in_background) {
+      const end = await $.clock.now()
+      await update($, live, ws => ws.map(w => (w.id === id ? { ...w, status: 'completed', endedAt: end } : w)))
+    }
+    return r
   })
 
   on('ui.close', { id: PANE }, async ($, e, next) => {

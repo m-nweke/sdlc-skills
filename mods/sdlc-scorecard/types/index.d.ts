@@ -40,8 +40,28 @@ export type Board = {
   error: string | null
 }
 
+// A model working right now in this session: a subagent, or a codex-run.sh / claude-run.sh worker.
+export type LiveWorker = {
+  id: string
+  source: 'agent' | 'codex-run' | 'claude-run'
+  model: string
+  title: string
+  prompt: string
+  startedAt: number
+  endedAt: number | null
+  status: string
+  // Shell workers end when their script writes meta.json here.
+  metaPath: string | null
+}
+
 declare module 'claude-code' {
   interface PluginState {
-    'sdlc-scorecard': { board: Board | null; groupBy: GroupBy; driver: Driver; mtime: number }
+    'sdlc-scorecard': {
+      board: Board | null
+      groupBy: GroupBy
+      driver: Driver
+      mtime: number
+      live: LiveWorker[]
+    }
   }
 }
