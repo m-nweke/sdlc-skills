@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Codex files in sync
+        run: python3 scripts/sync-codex.py --check
+
+      - name: Shell scripts parse
+        run: for f in install.sh scripts/*.sh; do bash -n "$f"; done
+
+      - name: Python scripts compile
+        run: python3 -m py_compile scripts/*.py
+
+      # Workflow scripts are bodies with top-level await and return, so parse each inside an async function.
+      - name: Workflow scripts parse
+        run: |
+          for f in workflows/*.js; do
+            node -e 'const src = require("fs").readFileSync(process.argv[1], "utf8").replace(/^export const meta/m, "const meta");
+                     new (Object.getPrototypeOf(async function () {}).constructor)(src)' "$f" || { echo "parse error: $f"; exit 1; }
+          done
