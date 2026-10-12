@@ -53,9 +53,9 @@ gh pr view <number> --json title,body,author,createdAt,mergedAt,labels,closingIs
 
 Capture this as seed context (file paths, symbols, commits, PR numbers, linked ticket IDs). Pass it to the investigators.
 
-## Step 3. Spawn Parallel Investigators (default posture)
+## Step 3. Spawn Parallel Investigators
 
-**Default to the full parallel investigation.**
+**Check the anchor first.** Step 2 already searched source control. If what it found answers the question from a primary source — a PR body, commit message, or linked ticket that states the rationale in so many words — answer inline from it, and list every other category under Sources Consulted as "not searched: anchor answered from a primary source". Offer the full sweep in one line. Anything short of that (rationale implied, partial, contested, or absent) gets the full parallel investigation below.
 
 ### Discovery
 
@@ -78,13 +78,13 @@ Aim for a complete **coverage map**, not a minimal one. Document the null, don't
 Launch all matching investigators in a single message so they run concurrently. Don't ask one agent to cover multiple MCPs.
 
 Spawn each investigator using the Agent tool with `run_in_background: true`:
-- `model`: `"haiku"` (fast; use `"sonnet"` for investigators that need deeper reasoning)
+- `model`: cheap tier, `"haiku"` (standard tier, `"sonnet"`, for investigators that need deeper reasoning; tiers per `fan-out-fan-in`)
 - Investigators need MCP access to query their respective sources — do not use read-only subagent types that strip MCPs. Investigators should not write files.
 
 Each investigator gets:
 1. The base prompt from `references/investigator-prompt.md`
-2. The category playbook `references/sources/<source>.md` for the selected MCP, adapted from the examples in `references/source-playbook.md`
-3. The cross-cutting `references/sources/incident-postmortem.md` **if the target code looks defensive** (null checks, retry logic, timeout handling, rate limiting, feature flags, egress guards, OOM handlers)
+2. Its category's entry from the investigator roster below, which says what that category uniquely surfaces. If a per-source playbook exists at `references/sources/<source>.md` (see `references/source-playbook.md`), include it too; none ship with this repo yet, so the investigator derives its queries from the roster entry and the MCP's own tool descriptions.
+3. **If the target code looks defensive** (null checks, retry logic, timeout handling, rate limiting, feature flags, egress guards, OOM handlers): an instruction to also look for the incident or postmortem that motivated it
 4. The code anchor from Step 2 (file paths, symbols, commit hashes, PR numbers, ticket IDs)
 5. The user's original question
 
@@ -115,13 +115,12 @@ Only skip with an **explicit, written justification** that goes in the final "So
 - **No MCP is available for that category** in this environment. Flag this as a gap, not a choice. Example: "Real-time team chat skipped. No matching MCP available, so the conversational record was not searchable."
 - **The source is provably irrelevant**, not just "probably irrelevant." A high bar. Example: "Error / exception tracking skipped. Target is a build-time script with no runtime code path."
 
-If your scope assessment suggests a single-commit trivial target where the PR description already contains the complete answer, you may answer inline **only after** confirming all seven available category searches would be redundant. Say so explicitly. This should be rare.
 
 ## Step 4. Synthesize
 
 Spawn one synthesizer Agent:
 
-- `model`: `"fable"` (the synthesizer needs depth — it spot-verifies citations and may need MCP access for that)
+- `model`: strong tier, `"fable"` (the synthesizer needs depth — it spot-verifies citations and may need MCP access for that)
 
 The synthesizer gets:
 1. The investigator findings, including any null results and any categories skipped with justification
@@ -148,6 +147,5 @@ After the Sources Consulted block, if the user's `why` question is a precursor t
 
 - `references/epistemics.md`. Confidence tiers and phrasing guide. The synthesizer must follow it.
 - `references/investigator-prompt.md`. Base prompt template for investigator subagents.
-- `references/source-playbook.md`. Index pointing at the category playbooks below.
-- `references/sources/*.md`. One self-contained example playbook per category, plus cross-cutting `incident-postmortem.md`. Give an investigator the single file that matches its category and adapt it to the available MCP.
+- `references/source-playbook.md`. Index of per-source playbooks. The playbook files themselves (`references/sources/*.md`) were not vendored; add one there when a source keeps producing weak investigations.
 - `references/synthesizer-prompt.md`. Prompt template for the synthesizer subagent, including the output format.

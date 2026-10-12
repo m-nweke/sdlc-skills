@@ -3,6 +3,11 @@ name: to-spec
 description: "Turn the current conversation into a spec and publish it to the project issue tracker: no interview, just synthesis of what you've already discussed. Use when the user asks to write up, formalize, or publish a spec from what's already been discussed."
 ---
 
+> **Conventions first.** Tracker choice, labels and Jira mechanics below came from a previous
+> company's process. Before acting on any of it, resolve the real rule through `company-conventions`;
+> where they differ the conventions win, and where the conventions are silent, ask — don't fall back
+> to what's written here.
+
 This skill takes the current conversation context and codebase understanding and produces a spec. Do NOT interview the user; just synthesize what you already know.
 
 The issue tracker and triage label vocabulary should have been provided to you. If not, tell the user to run `/setup-matt-pocock-skills`.

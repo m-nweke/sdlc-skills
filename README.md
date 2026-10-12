@@ -105,21 +105,58 @@ way gate-automation trust gets built, not assumed into existence.
 ## Quick start
 
 1. Clone this repo somewhere permanent (not a temp directory).
-2. Symlink what you want into Claude Code's skills/agents directories:
+2. Run the installer. It symlinks, so a `git pull` updates every host at once:
    ```bash
-   for skill in sdlc-skills/skills/*/; do
-     name=$(basename "$skill")
-     ln -s "$(pwd)/$skill" ~/.claude/skills/"$name"
-   done
-   for agent in sdlc-skills/agents/*.md; do
-     name=$(basename "$agent")
-     ln -s "$(pwd)/$agent" ~/.claude/agents/"$name"
-   done
+   ./install.sh          # Claude Code and Codex
+   ./install.sh claude   # Claude Code only
+   ./install.sh codex    # Codex only
    ```
-   (Swap `~/.claude` for `~/.claude-personal` or wherever `CLAUDE_CONFIG_DIR` points, if
-   you keep separate personal/work configs — this repo is symlinked into both on the
-   machine it was built on.)
-3. In a Claude Code session, invoke a pipeline entry point by name — see below.
+   Claude Code gets `skills/*` in `$CLAUDE_CONFIG_DIR/skills` (default `~/.claude`) and
+   `agents/*.md` in `…/agents`, `workflows/*.js` in `…/workflows`. Run it once per config dir if you keep separate
+   personal/work configs (`CLAUDE_CONFIG_DIR=~/.claude-personal ./install.sh claude`).
+3. Invoke a pipeline entry point by name (see below): type it in Claude Code, or `$sdlc-new-feature`
+   in Codex.
+
+## Using with Codex
+
+The skills are the same files on both hosts. There is no Codex fork to keep in sync. Codex
+reads the same `SKILL.md` format, and `./install.sh codex` adds the rest:
+
+- **Skills** are linked into `~/.agents/skills/`, where Codex discovers user-level skills.
+  Invoke one with `$skill-name` or `/skills`.
+- **Agents**: `agents/*.md` are generated into Codex custom agents at `codex/agents/*.toml`
+  and linked into `$CODEX_HOME/agents/` (default `~/.codex`).
+- **Tool vocabulary**: the skills name Claude Code tools (`AskUserQuestion`, the Agent tool,
+  `haiku`/`sonnet`/`opus`, `CLAUDE.md`, `mcp__claude-in-chrome__*`, …).
+  [`codex/AGENTS.md`](codex/AGENTS.md) is a translation table that the installer writes into
+  `~/.codex/AGENTS.md` between markers, leaving the rest of that file alone. Codex then
+  swaps each Claude term for its equivalent: `spawn_agent` for sub-agents, reasoning effort
+  in place of model tier, `AGENTS.md` in place of `CLAUDE.md`, and so on. The skill text stays
+  identical.
+- **Invocation policy**: `disable-model-invocation: true` in a `SKILL.md` is mirrored into
+  that skill's `agents/openai.yaml` as `policy.allow_implicit_invocation: false`. The two hosts
+  agree on which skills can fire on their own.
+
+Claude Code files are the source of truth. After editing a skill's frontmatter or anything in
+`agents/`, run `scripts/sync-codex.py` to regenerate the Codex files
+(`scripts/sync-codex.py --check` exits non-zero if they're stale, which makes it CI-friendly).
+Don't hand-edit `codex/agents/*.toml` or the `policy:` block of an `openai.yaml`.
+
+Differences that remain:
+- `interrogate` gets its adversarial signal from *model* diversity (four Claude models). On
+  Codex it runs as multiple reviewers on one model family at different reasoning efforts, so
+  its consensus signal is weaker.
+- `design-review` needs a browser-automation MCP. Configure one in Codex (Playwright, Chrome
+  DevTools, …), or it falls back to `design-audit.mjs`.
+- `swarm`'s `environment: "cloud"` workers run locally.
+- Codex's default `agents.max_depth = 1` stops a subagent from spawning its own. The
+  pipeline's phase-orchestrators need that to split Implement into per-ticket agents (Claude
+  Code allows 3 layers by default). Set it in `~/.codex/config.toml`:
+  ```toml
+  [agents]
+  max_depth = 3
+  ```
+  Without it, phase-orchestrators fall back to working their sub-tasks one after another.
 
 ## Using the pipeline
 
@@ -204,6 +241,66 @@ call the underlying skill directly (`diagnosing-bugs`, `frontend-design`, `to-sp
 never compete with those skills for the same request — see
 [Composition notes](#composition-notes).
 
+## Modes: Claude, Codex, or both
+
+The pipeline doesn't assume which tools you have. Each run is in one of three modes, chosen at
+the start (`sdlc-pipeline` step 0):
+
+| Mode | Needs | How phases run |
+| --- | --- | --- |
+| `claude` | Claude Code | One agent per phase on a tier model (`haiku`/`sonnet`/`opus`); artifacts in Claude Docs |
+| `codex` | Codex | One sub-agent per phase at a tier effort; artifacts as markdown in the run folder |
+| `dual` | Both, logged in | Every phase but Review on Sonnet + Codex, blind Opus merge, scored (below); Review always on Claude |
+
+The pipeline checks what's installed and logged in, and which AI tools the company allows on its
+code (recorded under `Pipeline` in the conventions file). Then it runs single-model automatically
+or asks whether you want `dual`, and you can save your answer as the default. You can switch at any
+gate. Start from Claude Code with an entry point (`/sdlc-fix` …), or from Codex with
+`codex -p sdlc-driver` then `$sdlc-fix` (`./install.sh codex-driver` installs that profile).
+
+### Dual mode
+
+In `dual` mode every pipeline phase except Review/QA runs on two models; Review always runs on Claude through the `review-lenses` workflow. The master orchestrator is Opus; each phase's
+identical prompt goes to a **Sonnet** worker and a **Codex `gpt-6.1-sol`** worker in parallel,
+neither sees the other, and a **blind Opus synthesizer** (it only sees "Draft A" and "Draft B")
+merges the best of both into one non-redundant artifact. The idea: each model covers the other's
+blind spots now, and every run builds the evidence for routing each kind of task to one model later.
+
+- **`dual-run`** is the mechanism: worker contract, blind A/B key, relays from both workers merged
+  into one question, two git worktrees in code mode, the synthesizer prompt and its provenance
+  ledger (which item came from which draft, what was dropped, what was wrong).
+- **`scripts/codex-run.sh`** runs one Codex worker (`codex exec --json`, structured final report,
+  `--resume` for relays) and records its session id, token use and duration.
+- **`scripts/scorecard.py`** appends one record per scored sub-task and one per gate (your own
+  pick of merged / A / B) to `~/.sdlc/scorecard.jsonl` — outside this public repo, since records
+  name real projects. `scorecard.py summary --by task_type` prints the comparison.
+- **`mods/sdlc-scorecard`** is a Claude Code mod: `/scorecard [phase|task]` opens a live pane of
+  wins, kept-item share, unique catches, errors, tokens and how often you agreed with the
+  synthesizer, per phase or task type, and flags routing candidates.
+- **Artifacts live in Claude Docs.** The synthesizer publishes each merged artifact as a doc; after
+  you approve, it's exported to `approved.md` so the next phase — and Codex — can read it.
+- **`company-conventions`** replaces every baked-in process assumption (tracker, branch names, PR
+  rules, naming, where docs live) with rules recorded in `~/.sdlc/conventions.md` and per-project
+  `.sdlc/conventions.md`, established by asking you the first time a step needs one.
+
+**Drive dual mode from either tool.** From Claude Code, the orchestrator is Opus and the Codex worker is
+`gpt-6.1-sol`. From Codex, run `./install.sh codex-driver` once, then `codex -p sdlc-driver` and
+`$sdlc-new-feature` (or any entry point): the orchestrator is `gpt-6.1-sol` at medium effort, the
+workers are Sonnet (`scripts/claude-run.sh`, headless Claude with sandboxed Bash) and `gpt-6-sol`,
+and the synthesizer is still a blind Opus, so verdicts stay comparable. Headless Claude can't
+reach Claude Docs, so a Codex-driven run queues its artifacts and `publish-run` publishes them from
+the next Claude session. The `codex-driver` install adds Codex rules that let it launch the three
+worker scripts without asking; those commands then run outside Codex's sandbox. Skip that part
+and Codex will ask before each launch instead. Scorecard records carry the driver;
+filter by it (`summary --driver codex`, or the pane's "Driven by" button) rather than pooling
+the two Codex models.
+
+Phases are split into sub-tasks with a `task_type` (`spec`, `ticket-breakdown`, `tests`,
+`implementation`, `pr-description`, …) so the scorecard can show "Codex writes better tests,
+Sonnet better specs" rather than one blended verdict per phase. When a task type has 8+ runs and
+one model wins 75%+, the pipeline proposes routing it to that model alone
+(`skills/dual-run/references/scorecard.md`); nothing switches without your say-so.
+
 ## Skills — what's here and where it came from
 
 Skills here are the source of truth; nothing in this section is installed verbatim from
@@ -216,6 +313,9 @@ reusing this repo outside personal use.
 - `discovery-ideation` — frames a raw idea/problem into a grilled, written brief
 - `sdlc-pipeline`, `sdlc-new-feature`, `sdlc-fix`, `sdlc-redesign`, `sdlc-harden` — the
   shared orchestration engine and its four entry points (see [Using the pipeline](#using-the-pipeline))
+- `dual-run` — one task through Sonnet and Codex in parallel, blind Opus synthesis, scored
+  (see [Dual mode](#dual-mode))
+- `company-conventions` — looks up or establishes (by asking) the current company's process rules
 - `work-ticket` — takes a Jira ticket from paste to reviewed PR in one fast session
   (not the gated pipeline above); composes `diagnosing-bugs` for non-obvious root
   causes, `tdd` for test-first implementation, and `codebase-design` /
@@ -227,7 +327,10 @@ reusing this repo outside personal use.
   to warrant several parallel branches instead of one serial pass. Fills the slot the ECC
   `parallel-execution-optimizer` catalogue entry was left unvendored for (see the affaan-m/ECC
   note below) — this is that pattern actually implemented, adapted to this repo's model-per-step
-  convention rather than vendored as-is.
+  convention rather than vendored as-is. It also holds the repo's one **model-tier** table
+  (cheap/standard/strong → Claude model and Codex reasoning effort), a fixed branch-report
+  format, and the rule for sizing N (one branch per natural slice, capped at 6). `swarm` covers
+  the other shape — workers that write, race each other, or run in the cloud.
 
 **Vendored from [benjaminstelzer/scoville-*](https://github.com/benjaminstelzer):**
 - `scoville-research` — evidence-first research; extended with background-agent
@@ -422,8 +525,11 @@ stack — never audit-straight-to-fix inside the pipeline, even though the skill
 capable of that in one pass standalone. The full sequencing for both directions lives
 in `sdlc-pipeline`'s "prototypes before direction" section, not duplicated here.
 
-**Every skill in this repo is model-invoked — nothing sets `disable-model-invocation`.**
-That's a deliberate, repo-wide policy, not just a fix for one broken chain: a skill
+**Every skill in the pipeline and its delegation chains is model-invoked.** The only skills
+that set `disable-model-invocation: true` are standalone tools no other skill here calls:
+`blast-radius`, `how`, `interrogate`, `recall`, `reflect`, `show-me-your-work`, `swarm`,
+`unslop`, and `why`. (`recall` hands work to `why`'s investigators by following its roster,
+not by invoking it.) The rule for the rest is deliberate, not just a fix for one broken chain: a skill
 flagged `disable-model-invocation: true` can't be reached through the Skill tool by
 *any* caller, including another skill, only typed directly by a human. This repo relies
 on skills invoking skills throughout — `sdlc-pipeline` delegating into every phase,

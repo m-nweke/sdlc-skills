@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "draft_path", "summary", "questions", "concerns", "files_touched"],
+  "properties": {
+    "status": {"type": "string", "enum": ["done", "relay", "failed"]},
+    "draft_path": {"type": "string", "description": "Where the draft (or, in code mode, the worktree) lives"},
+    "summary": {"type": "string", "description": "At most 10 lines: what was produced and the key decisions in it"},
+    "questions": {
+      "type": "array",
+      "description": "Only when status is relay: the exact questions the user must answer, shaped for AskUserQuestion",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question", "header", "multiSelect", "options"],
+        "properties": {
+          "question": {"type": "string"},
+          "header": {"type": "string"},
+          "multiSelect": {"type": "boolean"},
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["label", "description"],
+              "properties": {"label": {"type": "string"}, "description": {"type": "string"}}
+            }
+          }
+        }
+      }
+    },
+    "concerns": {"type": "array", "items": {"type": "string"}, "description": "Risks or doubts the reviewer should see"},
+    "files_touched": {"type": "array", "items": {"type": "string"}}
+  }
+}

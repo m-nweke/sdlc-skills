@@ -8,6 +8,8 @@ disable-model-invocation: true
 
 Fan out N parallel cloud workers. They may cover separate slices, race the same brief, or mix both. The parent waits, aggregates, and returns one report.
 
+Use this for workers that write, race, or run in the cloud. Read-only research or scanning that needs findings reconciled into one answer is `fan-out-fan-in`, which also defines the model tiers used below.
+
 ## Start
 
 Open a todolist with one entry per phase before launching anything.
@@ -22,7 +24,7 @@ Open a todolist with one entry per phase before launching anything.
 1. State the done predicate and the artifact or report the swarm must return.
 2. Choose the shape. Partition into slices, race N workers on identical briefs, or mix both. For a race or mixed shape, declare `first pass`, `rank all`, or `best-of` before spawning.
 3. Set N from the user or derive it from the shape. N is total workers, not the cloud concurrency limit.
-4. Pick the worker model. Default: `"haiku"` (fast, cheap). For a model race, name each arm's model up front. For judgment-heavy slices, use `"fable"` or `"opus"`.
+4. Pick the worker tier. Default: cheap (`"haiku"`). For a model race, name each arm's model up front. For judgment-heavy slices, strong (`"fable"` or `"opus"`).
 5. Give each worker its own writable output when it writes.
 
 ## Phase B: Fan out

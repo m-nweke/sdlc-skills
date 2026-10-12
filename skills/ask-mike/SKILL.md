@@ -6,6 +6,10 @@ disable-model-invocation: false
 
 # Ask Mike
 
+> **Conventions first.** Jira and the workflow context below came from a previous company's process. Before acting on
+> any of it, resolve the real rule through `company-conventions`; where they differ the conventions
+> win, and where the conventions are silent, ask — don't fall back to what's written here.
+
 Your concierge for this skills repo. Figures out what you're trying to accomplish, then points you at the right skill or workflow sequence.
 
 ## What this is

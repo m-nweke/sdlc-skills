@@ -26,7 +26,7 @@ For each candidate, read the first JSONL line and check that the first user mess
 
 ### 2. Spawn three reviewers in parallel
 
-One message, three Agent tool calls, explicit `model:` on each. Reviewers need MCP access for context lookups (tickets, chat threads, observability traces referenced in the transcript).
+One message, three Agent tool calls, explicit `model:` on each. The three models are deliberately different (different models catch different things), so this doesn't use the shared tiers. Reviewers need MCP access for context lookups (tickets, chat threads, observability traces referenced in the transcript).
 
 | Lens | `model` | Prompt template |
 |---|---|---|
@@ -38,7 +38,7 @@ Pass each template verbatim, substituting the transcript path or digest where ma
 
 ### 3. Synthesize
 
-One Agent call, `model: "fable"`. Use `references/synthesizer.md` verbatim, with each reviewer's full output inlined where marked. The synthesizer returns a structured Accepted / Rejected / Backlog list.
+One Agent call, strong tier (`model: "fable"`). Use `references/synthesizer.md` verbatim, with each reviewer's full output inlined where marked. The synthesizer returns a structured Accepted / Rejected / Backlog list.
 
 ### 4. Structural enforcement check
 

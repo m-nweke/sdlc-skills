@@ -1,0 +1,7 @@
+# Opt-in (./install.sh codex-driver), with __REPO__ replaced. Pre-approves the three scripts a
+# Codex-driven pipeline launches workers through. They need the network and write outside the
+# workspace (~/.claude, ~/.codex, ~/.sdlc), so without these rules Codex asks before every call.
+# An allowed command runs outside Codex's sandbox: install only if you accept that for these scripts.
+prefix_rule(pattern=["__REPO__/scripts/claude-run.sh"], decision="allow")
+prefix_rule(pattern=["__REPO__/scripts/codex-run.sh"], decision="allow")
+prefix_rule(pattern=["python3", "__REPO__/scripts/scorecard.py"], decision="allow")
