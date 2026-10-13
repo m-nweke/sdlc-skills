@@ -74,7 +74,26 @@ items are, then subtract for errors (an error that would have shipped a bug or a
 outweighs several minor unique catches). Not volume: a long draft with many dropped items doesn't
 win on length. Call it `tie` when you'd honestly be equally happy starting from either.
 
-## 4. Report back — at most 12 lines
+## 4. Side-by-side comparison — `{dir}/comparison.json`
+
+The user compares the drafts from this file instead of opening each one. Keep it blind:
+
+```json
+{
+  "rows": [{"aspect": "short name", "a": "what Draft A did, ≤2 concrete sentences",
+            "b": "same for Draft B, or \"Not addressed\"", "merged": "what the merged result does",
+            "pick": "A | B | both | neither | new", "why": "≤1 sentence"}],
+  "tests": {"a": "result as seen", "b": "...", "merged": "..."},
+  "excerpts": [{"aspect": "matches a row", "a": "≤15 lines", "b": "≤15 lines"}],
+  "concerns": ["≤3 things the user should weigh at the gate"]
+}
+```
+
+Use 8–15 rows covering the aspects that actually differ or decide the outcome, not every ledger
+line. Add excerpts (code or draft text) only for the 2–4 aspects where seeing the source decides
+it. In `draft` mode, `tests` can be omitted.
+
+## 5. Report back — at most 12 lines
 
 The doc link; winner (A/B/tie) and the rationale; up to 3 concerns the user should see at the gate
 (scope creep, an unresolved disagreement, a risky assumption both drafts shared); anything you

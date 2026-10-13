@@ -163,6 +163,29 @@ Codex's always come from its `meta.json`.
 
 The user's verdict is recorded at the gate, not here (see `references/scorecard.md`, gate record).
 
+## 6. Gate (mandatory)
+
+A dual run is not done until the user has been asked and the gate record is written, whether the
+caller is `sdlc-pipeline`, `work-ticket`, or a direct "dual-run this". The order is fixed:
+
+1. **Blind synthesis** (step 4), then the phase record (step 5).
+2. **Show the side by side.** Render the synthesizer's `comparison.json` as one page, unblinded:
+   columns headed with the model names from `key.json`, plus the merged result. Claude-driven
+   runs render it with `<sdlc-skills>/scripts/comparison-page.py <dir> --title "<run> <subtask>"`
+   and publish the HTML as an Artifact. Codex-driven runs write `comparison.md` and queue it. Include
+   the rows, the tests line, the excerpts, and the synthesizer's verdict and concerns. The user
+   should never have to open the worktrees or drafts to compare them.
+3. **Ask.** With `AskUserQuestion` (Codex-driven: the structured-question convention), ask for
+   the decision (approve, revise, regenerate, skip) and `preferred` (merged, sonnet, codex,
+   unsure).
+4. **Record.** Write the gate record with `scorecard.py add` before doing anything else.
+5. **Continue.** Only after that comes review, the PR/MR, and the next phase.
+
+Keep both worktrees until step 4 is written. Removing one first empties its folder and makes the
+comparison impossible.
+
+This applies to every task type until `routing.md` assigns that type to a single model.
+
 ## Worker contract
 
 Append this to every `prompt.md`, verbatim:
