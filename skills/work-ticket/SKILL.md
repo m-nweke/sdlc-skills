@@ -39,6 +39,8 @@ Then give a **3-line plan plus the file list** before touching anything. If it t
 
 ## 3 — Branch
 
+**Sweep merged worktrees first.** Merges usually land after the session that opened the PR has ended, so run Step 11 across the repo's worktrees before you add a new one.
+
 **Check for an existing branch for this ticket first and commit onto it** — don't cut a second one. If the user says stay on the current branch, stay on it.
 
 Otherwise `feature/{TICKET}-{short-subject}`, ≤60 chars, off the epic's consolidation branch if one exists, else `develop`. State the base you picked.
@@ -130,6 +132,17 @@ Cover, in this order: the symptom as reported; the root cause with the evidence 
 Write it for someone who wasn't in the session: no ticket shorthand without expansion, no "as discussed", no session references. It should still read a year from now.
 
 The artifact is private on publish. Say so when handing over the link, so the user knows sharing is their call.
+
+## 11 — After the merge: clean up the worktree
+
+Run this when you see the PR/MR merge: in the epic flow (Step 3), when the user says it merged, or during Step 3's sweep. `git fetch --prune` first, then for each candidate worktree from `git worktree list`:
+
+1. **Merged?** Yes if the forge reports the PR/MR merged, the branch is an ancestor of its base (`git merge-base --is-ancestor <branch> origin/<base>`), or `git cherry origin/<base> <branch>` prints no `+` lines (squash and Gerrit-style merges fail the ancestor check but pass this one). Otherwise skip it.
+2. **Clean?** `git -C <path> status --porcelain` is empty and nothing is ahead of the remote. If not, leave it and report the path and what's in it. Uncommitted work is the user's call.
+3. **Remove.** `git worktree remove <path>` (no `--force`), then `git branch -d <branch>`. If `-d` refuses only because the merge was a squash, and step 1 confirmed the merge through the forge or `git cherry`, use `-D`.
+4. **Main checkout.** It holds the `.git` directory, so it's never removed. If it sits on a merged branch and is clean, switch it to the base branch and pull.
+
+Finish with `git worktree prune`. The step is done when every merged worktree is either removed or reported along with the reason it stayed.
 
 ## Done means
 
