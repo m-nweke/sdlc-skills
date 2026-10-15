@@ -266,13 +266,32 @@ neither sees the other, and a **blind Opus synthesizer** (it only sees "Draft A"
 merges the best of both into one non-redundant artifact. The idea: each model covers the other's
 blind spots now, and every run builds the evidence for routing each kind of task to one model later.
 
+**The goal is a decision, not permanent duplication.** Dual mode runs until the scorecard shows which
+model should own each kind of work, such as specs, tests or implementation. After that, each task type
+runs on its one model. That decision needs two signals for every run: the blind judge's verdict
+and your own preference. So every dual run ends with the same gate, whoever called it (the
+pipeline, `work-ticket`, or a direct "dual-run this"):
+
+1. The blind Opus synthesizer merges the drafts and writes the phase record.
+2. You get a **side-by-side comparison page**. It names the models and shows Sonnet, Codex and the
+   merged result in columns, one row for each aspect that differs, with test results, short excerpts
+   and the judge's verdict and concerns. The synthesizer writes `comparison.json` while still
+   blind, and `scripts/comparison-page.py` renders it. You never have to open the worktrees to
+   compare them.
+3. You're asked for your decision and which version you prefer: merged, Sonnet, Codex or unsure.
+4. That goes into the scorecard as a gate record, and only then do review and the PR/MR start.
+   Both worktrees stay until this is written.
+
+If the judge and your picks keep disagreeing for a task type, the judge isn't trustworthy there
+yet. That's the signal to watch before letting it decide alone.
+
 - **`dual-run`** is the mechanism: worker contract, blind A/B key, relays from both workers merged
   into one question, two git worktrees in code mode, the synthesizer prompt and its provenance
   ledger (which item came from which draft, what was dropped, what was wrong).
 - **`scripts/codex-run.sh`** runs one Codex worker (`codex exec --json`, structured final report,
   `--resume` for relays) and records its session id, token use and duration.
 - **`scripts/scorecard.py`** appends one record per scored sub-task and one per gate (your own
-  pick of merged / A / B) to `~/.sdlc/scorecard.jsonl` — outside this public repo, since records
+  pick of merged / Sonnet / Codex / unsure) to `~/.sdlc/scorecard.jsonl` — outside this public repo, since records
   name real projects. `scorecard.py summary --by task_type` prints the comparison.
 - **`mods/sdlc-scorecard`** is a Claude Code mod: `/scorecard [phase|task]` opens a live pane of
   wins, kept-item share, unique catches, errors, tokens and how often you agreed with the
